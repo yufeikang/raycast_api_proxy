@@ -1,0 +1,23 @@
+
+[project]
+name = "raycast_bankend"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Yufei Kang", email = "kou.uhi.x@gmail.com"},
+]
+dependencies = [
+    "fastapi>=0.95.1",
+    "openai>=0.27.6",
+    "httpx>=0.24.0",
+    "uvicorn>=0.22.0",
+]
+requires-python = ">=3.9"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+

@@ -1,0 +1,31 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: FastAPI",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "cwd": "${workspaceFolder}/app",
+            "args": [
+                "main:app",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "443",
+                "--ssl-certfile",
+                "${workspaceFolder}/cert/backend.raycast.com.cert.pem",
+                "--ssl-keyfile",
+                "${workspaceFolder}/cert/backend.raycast.com.key.pem",
+            ],
+            "env": {
+                "LOG_LEVEL": "DEBUG",
+            },
+            "jinja": true,
+            "justMyCode": true
+        }
+    ]
+}
