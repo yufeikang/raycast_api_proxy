@@ -14,7 +14,7 @@ This is a simple proxy for the [Raycast AI](https://raycast.com/) app. It allows
 OPENAI_API_KEY=<your openai api key>
 ```
 
-4. Generate self-signed certificates with `./scripts/cert_gen.py -d bankend.raycast.com -o ./cert`
+4. Generate self-signed certificates with `./scripts/cert_gen.py --domain backend.raycast.com  --out ./cert`
 5. Run the server with `python3 main.py`
 
 ### Configuration
@@ -29,4 +29,4 @@ then you can use the Raycast AI app with the proxy.
 
 2. trust the certificate in your system keychain
 
-open the certificate in the `cert` folder and add it to the system keychain.
+open the ca certificate in the `cert` folder and add it to the system keychain.

@@ -59,4 +59,8 @@ with open(os.path.join(out_dir, "{}.key.pem".format(domain)), "wb") as f:
     )
     f.write(buf)
 
+# wirte ca cert
+with open(os.path.join(out_dir, "ca.cert.pem"), "wb") as f:
+    f.write(certstore.get_cert("mitmproxy", [], org).cert.to_pem())
+
 print("Success!!")
