@@ -11,13 +11,14 @@
 
 1. 生成证书
 
-```
-./scripts/cert_gen.py --domain backend.raycast.com  --out ./cert
+```sh
+pip3 install mitmproxy
+python -c "$(curl -fsSL https://raw.githubusercontent.com/yufeikang/raycast_api_proxy/main/scripts/cert_gen.py)"  --domain backend.raycast.com  --out ./cert
 ```
 
 2. 启动服务
 
-```
+```sh
 docker run --name raycast \
     -e OPENAI_API_KEY=$OPENAI_API_KEY \
     -p 443:443 \

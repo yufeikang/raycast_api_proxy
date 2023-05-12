@@ -11,13 +11,14 @@ It's a simple proxy that forwards requests from Raycast to the OpenAI API, conve
 
 1. Generate certificates
 
-```
-./scripts/cert_gen.py --domain backend.raycast.com  --out ./cert
+```sh
+pip3 install mitmproxy
+python -c "$(curl -fsSL https://raw.githubusercontent.com/yufeikang/raycast_api_proxy/main/scripts/cert_gen.py)"  --domain backend.raycast.com  --out ./cert
 ```
 
 2. Start the service
 
-```
+```sh
 docker run --name raycast \
     -e OPENAI_API_KEY=$OPENAI_API_KEY \
     -p 443:443 \
