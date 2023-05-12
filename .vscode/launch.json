@@ -9,9 +9,8 @@
             "type": "python",
             "request": "launch",
             "module": "uvicorn",
-            "cwd": "${workspaceFolder}/app",
             "args": [
-                "main:app",
+                "app.main:app",
                 "--host",
                 "0.0.0.0",
                 "--port",
@@ -23,6 +22,8 @@
             ],
             "env": {
                 "LOG_LEVEL": "DEBUG",
+                "PYTHONPATH": "${workspaceFolder}/__pypackages__/3.11/lib",
+                "DNS_SERVER": "1.1.1.1",
             },
             "jinja": true,
             "justMyCode": true

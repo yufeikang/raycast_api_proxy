@@ -12,14 +12,10 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 
-# get fastAPI logger
 logger = logging.getLogger("proxy")
 logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
-# 在这里设置您的 OpenAI API 密钥
 openai.api_key = os.environ["OPENAI_API_KEY"]
-
-# 用于 HTTPS 的 SSL 证书和密钥文件路径
 
 
 FORCE_MODEL = os.environ.get("FORCE_MODEL", None)
