@@ -1,32 +1,60 @@
 # Raycast AI Proxy
 
-This is a simple proxy for the [Raycast AI](https://raycast.com/) app. It allows you to use the [Raycast AI](https://raycast.com/ai) app without subscribing. It is a simple proxy that forwards the requests to OpenAI's API and returns the response.
+This is a simple [Raycast AI](https://raycast.com/) API proxy. It allows you to use the [Raycast AI](https://raycast.com/ai) app without a subscription. 
+It's a simple proxy that forwards requests from Raycast to the OpenAI API, converts the format, and returns the response in real-time.
 
-## Usage
+[English](README.md) | [中文](README.zh.md)
 
-### Installation in local
+## How to Use
 
-1. Clone the repository
-2. Install the dependencies with `pip install -r requirements.txt`
-3. Create a `.env` file with the following content:
+### Quick Start with Docker
+
+1. Generate certificates
 
 ```
-OPENAI_API_KEY=<your openai api key>
+./scripts/cert_gen.py --domain backend.raycast.com  --out ./cert
 ```
 
-4. Generate self-signed certificates with `./scripts/cert_gen.py --domain backend.raycast.com  --out ./cert`
-5. Run the server with `python3 main.py`
+2. Start the service
+
+```
+docker run --name raycast \
+    -e OPENAI_API_KEY=$OPENAI_API_KEY \
+    -p 443:443 \
+    --dns 1.1.1.1 \
+    -v $PWD/cert/:/data/cert \
+    -e CERT_FILE=/data/cert/backend.raycast.com.cert.pem \
+    -e CERT_KEY=/data/cert/backend.raycast.com.key.pem \
+    -e LOG_LEVEL=INFO \
+    -d \
+    ghcr.io/yufeikang/raycast_api_proxy:main
+```
+
+### Install Locally
+
+1. Clone this repository
+2. Use `pdm install` to install dependencies
+3. Create an environment variable
+
+```
+export OPENAI_API_KEY=<your openai api key>
+```
+
+4. Use `./scripts/cert_gen.py --domain backend.raycast.com  --out ./cert` to generate a self-signed certificate
+5. Start the service with `python ./app/main.py`
 
 ### Configuration
 
-1. modify `/etc/host` to add the following line:
+1. Modify `/etc/host` to add the following line:
 
 ```
-127.0.0.1 bankend.raycast.com
+127.0.0.1 backend.raycast.com
 ```
 
-then you can use the Raycast AI app with the proxy.
+The purpose of this modification is to point `backend.raycast.com` to the localhost instead of the actual `backend.raycast.com`. You can also add this 
+record in your DNS server.
 
-2. trust the certificate in your system keychain
+2. Add the certificate trust to the system keychain
 
-open the ca certificate in the `cert` folder and add it to the system keychain.
+Open the CA certificate in the `cert` folder and add it to the system keychain and trust it.
+This is **necessary** because the Raycast AI Proxy uses a self-signed certificate and it must be trusted to work properly.

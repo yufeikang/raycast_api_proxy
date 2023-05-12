@@ -1,0 +1,59 @@
+# Raycast AI 代理
+
+这是一个简单的 [Raycast AI](https://raycast.com/)API代理。它允许您在不订阅的情况下使用 [Raycast AI](https://raycast.com/ai)
+应用。它是一个简单的代理，将raycast的请求转换格式转发到 OpenAI 的 API，响应后再实时转换格式返回。
+
+[English](README.md) | [中文](README.zh.md)
+
+## 使用方法
+
+### Docker 快速启动
+
+1. 生成证书
+
+```
+./scripts/cert_gen.py --domain backend.raycast.com  --out ./cert
+```
+
+2. 启动服务
+
+```
+docker run --name raycast \
+    -e OPENAI_API_KEY=$OPENAI_API_KEY \
+    -p 443:443 \
+    --dns 1.1.1.1 \
+    -v $PWD/cert/:/data/cert \
+    -e CERT_FILE=/data/cert/backend.raycast.com.cert.pem \
+    -e CERT_KEY=/data/cert/backend.raycast.com.key.pem \
+    -e LOG_LEVEL=INFO \
+    -d \
+    ghcr.io/yufeikang/raycast_api_proxy:main
+```
+
+### 在本地安装
+
+1. clone 本仓库
+2. 使用 `pdm install` 安装依赖项
+3. 创建环境变量
+
+```
+export OPENAI_API_KEY=<your openai api key>
+```
+
+4. 使用 `./scripts/cert_gen.py --domain backend.raycast.com  --out ./cert` 生成自签名证书
+5. 用`python ./app/main.py`启动服务
+
+### 配置
+
+1. 修改 `/etc/host` 以添加以下行：
+
+```
+127.0.0.1 bankend.raycast.com
+```
+
+此修改的目的是为了把 `backend.raycast.com` 指定到本地，而不是真正的 `backend.raycast.com`。当然你也可以在你的dns server中添加这个记录。
+
+2. 将证书信任添加到系统钥匙链
+
+打开 `cert` 文件夹中的 ca 证书，并将其添加到系统钥匙链并信任。
+这是**必须**的，因为 Raycast AI 代理使用自签名证书，必须信任它才能正常工作。
