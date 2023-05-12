@@ -13,7 +13,7 @@ WORKDIR /project
 RUN mkdir __pypackages__ && pdm install --prod --no-lock --no-editable
 
 # run stage
-FROM python:3.9
+FROM python:3.9-slim
 
 # retrieve packages from build stage
 ENV PYTHONPATH=/project/pkgs
