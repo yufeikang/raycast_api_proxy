@@ -5,7 +5,7 @@ from pathlib import Path
 
 import httpx
 import openai
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +26,7 @@ def modify_me_is_pro(content):
     data["eligible_for_pro_features"] = True
     data["has_active_subscription"] = True
     data["publishing_bot"] = True
-    return json.dumps(data)
+    return json.dumps(data, ensure_ascii=False).encode("utf-8")
 
 
 MAP_RESPONSE_MODIFY = {"GET api/v1/me": modify_me_is_pro}
@@ -94,20 +94,34 @@ async def proxy(request: Request, path: str):
             raise HTTPException(
                 status_code=500, detail="Error occurred while forwarding request"
             )
+        content = None
+        if response.content is not None:
+            content = response.content
 
-        content = response.content
-
-        request_hash = f"{request.method.upper()} {path}"
-        if request_hash in MAP_RESPONSE_MODIFY:
-            logger.info(f"Modifying response for {request_hash}")
-            content = MAP_RESPONSE_MODIFY[request_hash](content)
-        logger.info(
-            "Response %s, status code: %s, data=%s",
-            path,
-            response.status_code,
-            content,
+            request_hash = f"{request.method.upper()} {path}"
+            if request_hash in MAP_RESPONSE_MODIFY:
+                logger.info(f"Modifying response for {request_hash}")
+                content = MAP_RESPONSE_MODIFY[request_hash](content)
+            logger.info(
+                "Response %s, status code: %s, data=%s",
+                path,
+                response.status_code,
+                content,
+            )
+        filtered_headers = [
+            "content-encoding",
+            "content-length",
+            "transfer-encoding",
+            "connection",
+        ]
+        response_headers = {
+            key: value
+            for key, value in response.headers.items()
+            if key not in filtered_headers
+        }
+        return Response(
+            status_code=response.status_code, content=content, headers=response_headers
         )
-        return content
 
 
 if __name__ == "__main__":
