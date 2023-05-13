@@ -1,6 +1,6 @@
 
 [project]
-name = "raycast_bankend"
+name = "raycast_backend"
 version = "0.1.0"
 description = ""
 authors = [
