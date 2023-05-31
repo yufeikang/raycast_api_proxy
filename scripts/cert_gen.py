@@ -8,7 +8,6 @@
 import argparse
 import os
 
-import OpenSSL
 from cryptography.hazmat.primitives import serialization
 from mitmproxy.certs import CertStore
 
@@ -47,6 +46,9 @@ certstore = CertStore.from_store(CA_DIR, "mitmproxy", 2048)
 cert_entry = certstore.get_cert(domain, domains, org)
 cert = cert_entry.cert
 pkey = cert_entry.privatekey
+
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
 
 with open(os.path.join(out_dir, "{}.cert.pem".format(domain)), "wb") as f:
     f.write(cert.to_pem())
