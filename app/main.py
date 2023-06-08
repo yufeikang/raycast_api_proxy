@@ -5,8 +5,10 @@ from pathlib import Path
 
 import httpx
 import openai
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
+
+from app.http import ProxyRequest, pass_through_request
 
 logging.basicConfig(level=logging.INFO)
 
@@ -15,21 +17,16 @@ app = FastAPI()
 logger = logging.getLogger("proxy")
 logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
+http_client = httpx.AsyncClient()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await http_client.aclose()
+
+
 openai.api_key = os.environ["OPENAI_API_KEY"]
-
-
 FORCE_MODEL = os.environ.get("FORCE_MODEL", None)
-
-
-def modify_me_is_pro(content):
-    data = json.loads(content)
-    data["eligible_for_pro_features"] = True
-    data["has_active_subscription"] = True
-    data["publishing_bot"] = True
-    return json.dumps(data, ensure_ascii=False).encode("utf-8")
-
-
-MAP_RESPONSE_MODIFY = {"GET api/v1/me": modify_me_is_pro}
 
 
 @app.post("/api/v1/ai/chat_completions")
@@ -71,57 +68,50 @@ async def chat_completions(request: Request):
     return StreamingResponse(openai_stream(), media_type="text/event-stream")
 
 
-@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
-async def proxy(request: Request, path: str):
-    logger.info(f"Received request: {request.method} {path}")
-    async with httpx.AsyncClient() as client:
-        raycast_host = request.headers.get("host")
-        url = f"https://{raycast_host}/{path}"
-        logger.debug(f"Forwarding request to {url}")
-        headers = {key: value for key, value in request.headers.items()}
-        # disable compression, in docker container, it will cause error, unknown reason
-        headers["accept-encoding"] = "identity"
-        try:
-            response = await client.request(
-                request.method,
-                url,
-                headers=headers,
-                data=await request.body(),
-                params=request.query_params,
-                timeout=60.0,
-            )
-        except httpx.RequestError as e:
-            raise HTTPException(
-                status_code=500, detail="Error occurred while forwarding request"
-            )
-        content = None
-        if response.content is not None:
-            content = response.content
+@app.api_route("/api/v1/me", methods=["GET"])
+async def proxy(request: Request):
+    logger.info("Received request to /api/v1/me")
+    headers = {key: value for key, value in request.headers.items()}
+    req = ProxyRequest(
+        str(request.url),
+        request.method,
+        headers,
+        await request.body(),
+        query_params=request.query_params,
+    )
+    response = await pass_through_request(http_client, req)
+    content = response.content
+    if response.status_code == 200:
+        data = json.loads(content)
+        data["eligible_for_pro_features"] = True
+        data["has_active_subscription"] = True
+        data["publishing_bot"] = True
+        content = json.dumps(data, ensure_ascii=False).encode("utf-8")
+    return Response(
+        status_code=response.status_code,
+        content=content,
+        headers=response.headers,
+    )
 
-            request_hash = f"{request.method.upper()} {path}"
-            if request_hash in MAP_RESPONSE_MODIFY:
-                logger.info(f"Modifying response for {request_hash}")
-                content = MAP_RESPONSE_MODIFY[request_hash](content)
-            logger.info(
-                "Response %s, status code: %s, data=%s",
-                path,
-                response.status_code,
-                content,
-            )
-        filtered_headers = [
-            "content-encoding",
-            "content-length",
-            "transfer-encoding",
-            "connection",
-        ]
-        response_headers = {
-            key: value
-            for key, value in response.headers.items()
-            if key not in filtered_headers
-        }
-        return Response(
-            status_code=response.status_code, content=content, headers=response_headers
-        )
+
+# pass through all other requests
+@app.api_route("/{path:path}")
+async def proxy_options(request: Request, path: str):
+    logger.info(f"Received request: {request.method} {path}")
+    headers = {key: value for key, value in request.headers.items()}
+    req = ProxyRequest(
+        str(request.url),
+        request.method,
+        headers,
+        await request.body(),
+        query_params=request.query_params,
+    )
+    response = await pass_through_request(http_client, req)
+    return Response(
+        status_code=response.status_code,
+        content=response.content,
+        headers=response.headers,
+    )
 
 
 if __name__ == "__main__":

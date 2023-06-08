@@ -23,6 +23,6 @@ COPY scripts/entrypoint.sh /
 
 EXPOSE 80
 
-WORKDIR /project/app
+WORKDIR /project
 # set command/entrypoint, adapt to fit your needs
 ENTRYPOINT sh /entrypoint.sh
