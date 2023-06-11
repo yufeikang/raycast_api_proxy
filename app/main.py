@@ -19,6 +19,31 @@ logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
 http_client = httpx.AsyncClient()
 
+USER_SESSION = {}  # bearer token -> user email
+ALLOWED_USERS = os.environ.get("ALLOWED_USERS", "").split(",")
+
+
+def add_user(request: Request, user_email: str):
+    bearer_token = request.headers.get("Authorization", "").split(" ")[1]
+    if bearer_token not in USER_SESSION:
+        logger.info(f"Adding user {user_email} to session")
+        USER_SESSION[bearer_token] = user_email
+
+
+def check_auth(request: Request):
+    if not ALLOWED_USERS:
+        return True
+    bearer_token = request.headers.get("Authorization", "").split(" ")[1]
+    if bearer_token not in USER_SESSION:
+        logger.warn(f"User not in session: {bearer_token}")
+        return False
+    user_email = USER_SESSION[bearer_token]
+    if user_email not in ALLOWED_USERS:
+        logger.debug(f"Allowed users: {ALLOWED_USERS}")
+        logger.warn(f"User not allowed: {user_email}")
+        return False
+    return True
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -32,6 +57,8 @@ FORCE_MODEL = os.environ.get("FORCE_MODEL", None)
 @app.post("/api/v1/ai/chat_completions")
 async def chat_completions(request: Request):
     raycast_data = await request.json()
+    if not check_auth(request):
+        return Response(status_code=401)
     logger.info(f"Received chat completion request: {raycast_data}")
     openai_messages = []
     temperature = os.environ.get("TEMPERATURE", 0.5)
@@ -86,6 +113,7 @@ async def proxy(request: Request):
         data["eligible_for_pro_features"] = True
         data["has_active_subscription"] = True
         data["publishing_bot"] = True
+        add_user(request, data["email"])
         content = json.dumps(data, ensure_ascii=False).encode("utf-8")
     return Response(
         status_code=response.status_code,
