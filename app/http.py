@@ -51,7 +51,7 @@ async def pass_through_request(client: httpx.AsyncClient, request: ProxyRequest)
     content = None
     if response.content is not None:
         content = response.content
-        logger.info(
+        logger.debug(
             "Response %s, status code: %s, data=%s",
             url,
             response.status_code,

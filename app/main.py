@@ -20,7 +20,11 @@ logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 http_client = httpx.AsyncClient()
 
 USER_SESSION = {}  # bearer token -> user email
-ALLOWED_USERS = os.environ.get("ALLOWED_USERS", "").split(",")
+ALLOWED_USERS = (
+    os.environ.get("ALLOWED_USERS").split(",")
+    if os.environ.get("ALLOWED_USERS", "")
+    else None
+)
 
 
 def add_user(request: Request, user_email: str):
