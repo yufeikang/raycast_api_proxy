@@ -10,12 +10,11 @@ from fastapi.responses import StreamingResponse
 
 from app.http import ProxyRequest, pass_through_request
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
 
 app = FastAPI()
 
 logger = logging.getLogger("proxy")
-logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
 http_client = httpx.AsyncClient()
 
@@ -25,6 +24,8 @@ ALLOWED_USERS = (
     if os.environ.get("ALLOWED_USERS", "")
     else None
 )
+
+MAX_TOKENS = os.environ.get("MAX_TOKENS", 1024)
 
 
 def add_user(request: Request, user_email: str):
@@ -67,6 +68,13 @@ async def chat_completions(request: Request):
     openai_messages = []
     temperature = os.environ.get("TEMPERATURE", 0.5)
     for msg in raycast_data["messages"]:
+        if "system_instructions" in msg["content"]:
+            openai_messages.append(
+                {
+                    "role": "system",
+                    "content": msg["content"]["system_instructions"],
+                }
+            )
         if "command_instructions" in msg["content"]:
             openai_messages.append(
                 {
@@ -84,16 +92,18 @@ async def chat_completions(request: Request):
         for response in openai.ChatCompletion.create(
             model=model,
             messages=openai_messages,
-            max_tokens=150,
+            max_tokens=MAX_TOKENS,
             n=1,
             stop=None,
             temperature=temperature,
             stream=True,
         ):
             chunk = response["choices"][0]
-            if "finish_reason" in chunk:
+            if "finish_reason" in chunk and chunk["finish_reason"] is not None:
+                logger.debug(f"OpenAI response finish: {chunk['finish_reason']}")
                 yield f'data: {json.dumps({"text": "", "finish_reason": "stop"})}\n\n'
             if "content" in chunk["delta"]:
+                logger.debug(f"OpenAI response chunk: {chunk['delta']['content']}")
                 yield f'data: {json.dumps({"text": chunk["delta"]["content"]})}\n\n'
 
     return StreamingResponse(openai_stream(), media_type="text/event-stream")
@@ -116,6 +126,10 @@ async def proxy(request: Request):
         data = json.loads(content)
         data["eligible_for_pro_features"] = True
         data["has_active_subscription"] = True
+        data["eligible_for_ai"] = True
+        data["eligible_for_gpt4"] = True
+        data["eligible_for_developer_hub"] = True
+        data["eligible_for_application_settings"] = True
         data["publishing_bot"] = True
         add_user(request, data["email"])
         content = json.dumps(data, ensure_ascii=False).encode("utf-8")
