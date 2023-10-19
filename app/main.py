@@ -8,7 +8,7 @@ import openai
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
 
-from app.http import ProxyRequest, pass_through_request
+from app.utils import ProxyRequest, pass_through_request
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
 
@@ -128,9 +128,14 @@ async def proxy(request: Request):
         data["has_active_subscription"] = True
         data["eligible_for_ai"] = True
         data["eligible_for_gpt4"] = True
+        data["eligible_for_ai_citations"] = True
         data["eligible_for_developer_hub"] = True
         data["eligible_for_application_settings"] = True
         data["publishing_bot"] = True
+        data["has_pro_features"] = True
+        data["has_better_ai"] = True
+        data["can_upgrade_to_pro"] = False
+        data["admin"] = True
         add_user(request, data["email"])
         content = json.dumps(data, ensure_ascii=False).encode("utf-8")
     return Response(
