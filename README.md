@@ -72,6 +72,7 @@ export OPENAI_API_KEY=<your openai api key>
 
 ```
 127.0.0.1 backend.raycast.com
+::1 backend.raycast.com
 ```
 
 The purpose of this modification is to point `backend.raycast.com` to the localhost instead of the actual `backend.raycast.com`. You can also add this 

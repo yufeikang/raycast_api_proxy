@@ -71,6 +71,7 @@ export OPENAI_API_KEY=<your openai api key>
 
 ```
 127.0.0.1 backend.raycast.com
+::1 backend.raycast.com
 ```
 
 此修改的目的是为了把 `backend.raycast.com` 指定到本地，而不是真正的 `backend.raycast.com`。当然你也可以在你的dns server中添加这个记录。
