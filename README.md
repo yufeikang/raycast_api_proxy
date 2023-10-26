@@ -31,6 +31,28 @@ docker run --name raycast \
     ghcr.io/yufeikang/raycast_api_proxy:main
 ```
 
+3. Change the OPENAI environment variable to using the Azure OpenAI API
+
+See [How to switch between OpenAI and Azure OpenAI endpoints with Python](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints)
+
+```sh
+docker run --name raycast \
+    -e OPENAI_API_KEY=$OPENAI_API_KEY \
+    -e OPENAI_API_BASE=https://your-resource.openai.azure.com \
+    -e OPENAI_API_VERSION=2023-05-15 \
+    -e OPENAI_API_TYPE=azure \
+    -e AZURE_DEPLOYMENT_ID=your-deployment-id \
+    -p 443:443 \
+    --dns 1.1.1.1 \
+    -v $PWD/cert/:/data/cert \
+    -e CERT_FILE=/data/cert/backend.raycast.com.cert.pem \
+    -e CERT_KEY=/data/cert/backend.raycast.com.key.pem \
+    -e LOG_LEVEL=INFO \
+    -d \
+    ghcr.io/yufeikang/raycast_api_proxy:main
+```
+
+
 ### Install Locally
 
 1. Clone this repository
