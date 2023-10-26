@@ -150,6 +150,10 @@ async def proxy(request: Request):
 async def proxy_options(request: Request, path: str):
     logger.info(f"Received request: {request.method} {path}")
     headers = {key: value for key, value in request.headers.items()}
+    url = str(request.url)
+    # add https when running via https gateway
+    if "https://" not in url:
+        url = url.replace("http://", "https://")
     req = ProxyRequest(
         str(request.url),
         request.method,
