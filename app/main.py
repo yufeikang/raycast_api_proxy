@@ -56,7 +56,12 @@ async def shutdown_event():
 
 
 openai.api_key = os.environ["OPENAI_API_KEY"]
+is_azure = openai.api_type in ("azure", "azure_ad", "azuread")
+if is_azure:
+    logger.info("Using Azure API")
+
 FORCE_MODEL = os.environ.get("FORCE_MODEL", None)
+AZURE_DEPLOYMENT_ID = os.environ.get("AZURE_DEPLOYMENT_ID", None)
 
 
 @app.post("/api/v1/ai/chat_completions")
@@ -92,6 +97,7 @@ async def chat_completions(request: Request):
         for response in openai.ChatCompletion.create(
             model=model,
             messages=openai_messages,
+            deployment_id=AZURE_DEPLOYMENT_ID if is_azure else None,
             max_tokens=MAX_TOKENS,
             n=1,
             stop=None,
