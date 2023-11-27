@@ -203,10 +203,14 @@ if __name__ == "__main__":
         ssl_cert_path = None
         ssl_key_path = None
 
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=443,
-        ssl_certfile=ssl_cert_path,
-        ssl_keyfile=ssl_key_path,
-    )
+    # if no cert, run without ssl
+    if not ssl_cert_path or not ssl_key_path:
+        uvicorn.run(app, host="0.0.0.0", port=80)
+    else:
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=443,
+            ssl_certfile=ssl_cert_path,
+            ssl_keyfile=ssl_key_path,
+        )
