@@ -114,6 +114,19 @@ async def chat_completions(request: Request):
 
     return StreamingResponse(openai_stream(), media_type="text/event-stream")
 
+# Add an api route for /api/v1/status to just say OK
+@app.api_route("/api/v1/status", methods=["GET"])
+async def proxy_ok(request: Request):
+    logger.info("Received request to /api/v1/status")
+    data = {}
+    data["status"] = "OK"
+    content = json.dumps(data, ensure_ascii=False).encode("utf-8")
+    return Response(
+        status_code=200,
+        content=content,
+        headers={},
+    )
+
 
 @app.api_route("/api/v1/me", methods=["GET"])
 async def proxy(request: Request):
