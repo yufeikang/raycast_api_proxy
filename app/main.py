@@ -80,6 +80,13 @@ async def chat_completions(request: Request):
                     "content": msg["content"]["system_instructions"],
                 }
             )
+        if "additional_system_instructions" in raycast_data:
+            openai_messages.append(
+                {
+                    "role": "system",
+                    "content": raycast_data["additional_system_instructions"],
+                }
+            )
         if "command_instructions" in msg["content"]:
             openai_messages.append(
                 {
@@ -114,19 +121,6 @@ async def chat_completions(request: Request):
 
     return StreamingResponse(openai_stream(), media_type="text/event-stream")
 
-# Add an api route for /api/v1/status to just say OK
-@app.api_route("/api/v1/status", methods=["GET"])
-async def proxy_ok(request: Request):
-    logger.info("Received request to /api/v1/status")
-    data = {}
-    data["status"] = "OK"
-    content = json.dumps(data, ensure_ascii=False).encode("utf-8")
-    return Response(
-        status_code=200,
-        content=content,
-        headers={},
-    )
-
 
 @app.api_route("/api/v1/me", methods=["GET"])
 async def proxy(request: Request):
@@ -143,18 +137,18 @@ async def proxy(request: Request):
     content = response.content
     if response.status_code == 200:
         data = json.loads(content)
+        data["admin"] = True
+        data["can_upgrade_to_pro"] = False
+        data["eligible_for_ai_citations"] = True
+        data["eligible_for_ai"] = True
+        data["eligible_for_application_settings"] = True
+        data["eligible_for_developer_hub"] = True
+        data["eligible_for_gpt4"] = True
         data["eligible_for_pro_features"] = True
         data["has_active_subscription"] = True
-        data["eligible_for_ai"] = True
-        data["eligible_for_gpt4"] = True
-        data["eligible_for_ai_citations"] = True
-        data["eligible_for_developer_hub"] = True
-        data["eligible_for_application_settings"] = True
-        data["publishing_bot"] = True
-        data["has_pro_features"] = True
         data["has_better_ai"] = True
-        data["can_upgrade_to_pro"] = False
-        data["admin"] = True
+        data["has_pro_features"] = True
+        data["publishing_bot"] = True
         add_user(request, data["email"])
         content = json.dumps(data, ensure_ascii=False).encode("utf-8")
     return Response(
@@ -164,8 +158,42 @@ async def proxy(request: Request):
     )
 
 
+@app.api_route("/api/v1/ai/models", methods=["GET"])
+async def proxy_models(request: Request):
+    logger.info("Received request to /api/v1/ai/models")
+    headers = {key: value for key, value in request.headers.items()}
+    req = ProxyRequest(
+        str(request.url),
+        request.method,
+        headers,
+        await request.body(),
+        query_params=request.query_params,
+    )
+    response = await pass_through_request(http_client, req)
+    content = response.content
+    if response.status_code == 200:
+        data = json.loads(content)
+        data["models"] = [
+            {
+                "id": "openai-gpt-3.5-turbo",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT-3.5 Turbo",
+                "provider": "openai",
+                "provider_name": "OpenAI",
+                "requires_better_ai": True,
+                "features": [],
+            },
+        ]
+        content = json.dumps(data, ensure_ascii=False).encode("utf-8")
+    return Response(
+        status_code=response.status_code,
+        content=content,
+        headers=response.headers,
+    )
+
+
 # pass through all other requests
-@app.api_route("/{path:path}")
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 async def proxy_options(request: Request, path: str):
     logger.info(f"Received request: {request.method} {path}")
     headers = {key: value for key, value in request.headers.items()}
@@ -191,26 +219,4 @@ async def proxy_options(request: Request, path: str):
 if __name__ == "__main__":
     import uvicorn
 
-    current_dir = Path(__file__).parent.parent
-
-    if os.environ.get("CERT_FILE") and os.environ.get("KEY_FILE"):
-        ssl_cert_path = Path(os.environ.get("CERT_FILE"))
-        ssl_key_path = Path(os.environ.get("KEY_FILE"))
-    elif (current_dir / "cert").exists():
-        ssl_cert_path = current_dir / "cert" / "backend.raycast.com.cert.pem"
-        ssl_key_path = current_dir / "cert" / "backend.raycast.com.key.pem"
-    else:
-        ssl_cert_path = None
-        ssl_key_path = None
-
-    # if no cert, run without ssl
-    if not ssl_cert_path or not ssl_key_path:
-        uvicorn.run(app, host="0.0.0.0", port=80)
-    else:
-        uvicorn.run(
-            app,
-            host="0.0.0.0",
-            port=443,
-            ssl_certfile=ssl_cert_path,
-            ssl_keyfile=ssl_key_path,
-        )
+    uvicorn.run(app, host="0.0.0.0", port=80)

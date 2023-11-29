@@ -10,6 +10,7 @@ services:
       - 1.1.1.1
     volumes:
       - "$PWD/app:/project/app"
+      - "$PWD/logs:/project/logs"
     command: --reload
     env_file:
       - .env
