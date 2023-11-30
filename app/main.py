@@ -59,9 +59,16 @@ openai.api_key = os.environ["OPENAI_API_KEY"]
 is_azure = openai.api_type in ("azure", "azure_ad", "azuread")
 if is_azure:
     logger.info("Using Azure API")
+    openai_client = openai.AzureOpenAI(
+        azure_endpoint=os.environ.get("OPENAI_AZURE_ENDPOINT"),
+        azure_ad_token_provider=os.environ.get("AZURE_DEPLOYMENT_ID", None),
+    )
+else:
+    logger.info("Using OpenAI API")
+    openai_client = openai.OpenAI()
+
 
 FORCE_MODEL = os.environ.get("FORCE_MODEL", None)
-AZURE_DEPLOYMENT_ID = os.environ.get("AZURE_DEPLOYMENT_ID", None)
 
 
 @app.post("/api/v1/ai/chat_completions")
@@ -87,6 +94,13 @@ async def chat_completions(request: Request):
                     "content": msg["content"]["command_instructions"],
                 }
             )
+        if "additional_system_instructions" in raycast_data:
+            openai_messages.append(
+                {
+                    "role": "system",
+                    "content": raycast_data["additional_system_instructions"],
+                }
+            )
         if "text" in msg["content"]:
             openai_messages.append({"role": "user", "content": msg["content"]["text"]})
         if "temperature" in msg["content"]:
@@ -94,23 +108,23 @@ async def chat_completions(request: Request):
     model = FORCE_MODEL or raycast_data["model"]
 
     def openai_stream():
-        for response in openai.ChatCompletion.create(
+        stream = openai_client.chat.completions.create(
             model=model,
             messages=openai_messages,
-            deployment_id=AZURE_DEPLOYMENT_ID if is_azure else None,
             max_tokens=MAX_TOKENS,
             n=1,
             stop=None,
             temperature=temperature,
             stream=True,
-        ):
-            chunk = response["choices"][0]
-            if "finish_reason" in chunk and chunk["finish_reason"] is not None:
-                logger.debug(f"OpenAI response finish: {chunk['finish_reason']}")
+        )
+        for response in stream:
+            chunk = response.choices[0]
+            if chunk.finish_reason is not None:
+                logger.debug(f"OpenAI response finish: {chunk.finish_reason}")
                 yield f'data: {json.dumps({"text": "", "finish_reason": "stop"})}\n\n'
-            if "content" in chunk["delta"]:
-                logger.debug(f"OpenAI response chunk: {chunk['delta']['content']}")
-                yield f'data: {json.dumps({"text": chunk["delta"]["content"]})}\n\n'
+            if chunk.delta and chunk.delta.content:
+                logger.debug(f"OpenAI response chunk: {chunk.delta.content}")
+                yield f'data: {json.dumps({"text": chunk.delta.content})}\n\n'
 
     return StreamingResponse(openai_stream(), media_type="text/event-stream")
 
@@ -143,6 +157,40 @@ async def proxy(request: Request):
         data["can_upgrade_to_pro"] = False
         data["admin"] = True
         add_user(request, data["email"])
+        content = json.dumps(data, ensure_ascii=False).encode("utf-8")
+    return Response(
+        status_code=response.status_code,
+        content=content,
+        headers=response.headers,
+    )
+
+
+@app.api_route("/api/v1/ai/models", methods=["GET"])
+async def proxy_models(request: Request):
+    logger.info("Received request to /api/v1/ai/models")
+    headers = {key: value for key, value in request.headers.items()}
+    req = ProxyRequest(
+        str(request.url),
+        request.method,
+        headers,
+        await request.body(),
+        query_params=request.query_params,
+    )
+    response = await pass_through_request(http_client, req)
+    content = response.content
+    if response.status_code == 200:
+        data = json.loads(content)
+        data["models"] = [
+            {
+                "id": "openai-gpt-3.5-turbo",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT-3.5 Turbo",
+                "provider": "openai",
+                "provider_name": "OpenAI",
+                "requires_better_ai": True,
+                "features": [],
+            }
+        ]
         content = json.dumps(data, ensure_ascii=False).encode("utf-8")
     return Response(
         status_code=response.status_code,
