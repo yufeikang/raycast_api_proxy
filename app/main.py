@@ -189,7 +189,16 @@ async def proxy_models(request: Request):
                 "provider_name": "OpenAI",
                 "requires_better_ai": True,
                 "features": [],
-            }
+            },
+            {
+                "id": "openai-gpt-4-1106-preview",
+                "model": "gpt-4-1106-preview",
+                "name": "GPT-4 Turbo",
+                "provider": "openai",
+                "provider_name": "OpenAI",
+                "requires_better_ai": True,
+                "features": [],
+            },
         ]
         content = json.dumps(data, ensure_ascii=False).encode("utf-8")
     return Response(
