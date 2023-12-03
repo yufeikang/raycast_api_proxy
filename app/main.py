@@ -180,6 +180,12 @@ async def proxy_models(request: Request):
     content = response.content
     if response.status_code == 200:
         data = json.loads(content)
+        data["default_models"] = {
+            "chat": "openai-gpt-4-1106-preview",
+            "quick_ai": "openai-gpt-4-1106-preview",
+            "commands": "openai-gpt-3.5-turbo-instruct",
+            "api": "openai-gpt-3.5-turbo-instruct",
+        }
         data["models"] = [
             {
                 "id": "openai-gpt-3.5-turbo",
