@@ -5,7 +5,7 @@ from pathlib import Path
 
 import httpx
 import openai
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, WebSocket
 from fastapi.responses import StreamingResponse
 
 from app.utils import ProxyRequest, pass_through_request
@@ -68,6 +68,57 @@ else:
     openai_client = openai.OpenAI()
 
 FORCE_MODEL = os.environ.get("FORCE_MODEL", None)
+
+
+@app.get("/cable")
+async def cable(request: Request):
+    """
+    This is a dummy endpoint to allow the Raycast app to connect to the ActionCable server.
+    """
+    return Response(status_code=200)
+
+
+# @app.get("/api/v1/me/trial_status")
+# async def trial_status(request: Request):
+#     """
+#     This is a dummy endpoint to allow the Raycast app to connect to the ActionCable server.
+#     """
+#     logger.info("Received request to /api/v1/me/trial_status")
+#     headers = {key: value for key, value in request.headers.items()}
+#     req = ProxyRequest(
+#         str(request.url),
+#         request.method,
+#         headers,
+#         await request.body(),
+#         query_params=request.query_params,
+#     )
+#     response = await pass_through_request(http_client, req)
+#     content = response.content
+#     if response.status_code == 200:
+#         data = json.loads(content)
+#         if "trial_limits" in data:
+#             data["trial_limits"] = {
+#                 "commands_limit": 9999999999,
+#                 "quicklinks_limit": 9999999999,
+#                 "snippets_limit": 9999999999,
+#             }
+
+#         content = json.dumps(data, ensure_ascii=False).encode("utf-8")
+#     return Response(
+#         status_code=response.status_code,
+#         content=content,
+#         headers=response.headers,
+#     )
+
+
+# Create a function that responds to a websocket request to /cable with a websocket response
+@app.websocket("/cable")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_text()
+        logger.info(f"Received websocket data: {data}")
+        await websocket.send_text(data)
 
 
 @app.post("/api/v1/ai/chat_completions")
@@ -155,6 +206,27 @@ async def proxy(request: Request):
         data["has_better_ai"] = True
         data["has_pro_features"] = True
         data["publishing_bot"] = True
+        # if data has organizations key
+        # if "organizations" in data:
+        #     for org in data["organizations"]:
+        #         # set to an object with current_period_end set
+        #         # org["subscription"] = {
+        #         #     "running": True,
+        #         #     "current_period_end": 9999999999,
+        #         #     "can_upgrade_to_better_ai": False,
+        #         #     "can_downgrade_from_better_ai": True,
+        #         #     "can_cancel": True,
+        #         #     "canceled_at": None,
+        #         #     "status": "active",
+        #         # }
+        #         # org["can_upgrade_to_pro"] = False
+        #         # org["can_manage_billing"] = True
+        #         # org["stripe_subscription_interval"] = "month"
+        #         # org["stripe_subscription_status"] = "active"
+        #         # org["has_running_subscription"] = True
+        #         # org["stripe_subscription_current_period_end"] = 9999999999
+        #         # org["has_active_subscription"] = True
+
         add_user(request, data["email"])
         content = json.dumps(data, ensure_ascii=False).encode("utf-8")
     return Response(
@@ -200,10 +272,10 @@ async def proxy_models(request: Request):
             },
         ]
         data["default_models"] = {
-            "chat": "openai-gpt-4-1106-preview",
-            "quick_ai": "openai-gpt-4-1106-preview",
-            "commands": "openai-gpt-4-1106-preview-instruct",
-            "api": "openai-gpt-4-1106-preview-instruct",
+            "chat": "openai-gpt-3.5-turbo-1106",
+            "quick_ai": "openai-gpt-3.5-turbo-1106",
+            "commands": "openai-gpt-3.5-turbo-instruct",
+            "api": "openai-gpt-3.5-turbo-instruct",
         }
         content = json.dumps(data, ensure_ascii=False).encode("utf-8")
     return Response(
