@@ -1,6 +1,6 @@
 # Raycast AI Proxy
 
-This is a simple [Raycast AI](https://raycast.com/) API proxy. It allows you to use the [Raycast AI](https://raycast.com/ai) app without a subscription. 
+This is a simple [Raycast AI](https://raycast.com/) API proxy. It allows you to use the [Raycast AI](https://raycast.com/ai) app without a subscription.
 It's a simple proxy that forwards requests from Raycast to the OpenAI API, converts the format, and returns the response in real-time.
 
 [English](README.md) | [中文](README.zh.md)
@@ -75,10 +75,21 @@ export OPENAI_API_KEY=<your openai api key>
 ::1 backend.raycast.com
 ```
 
-The purpose of this modification is to point `backend.raycast.com` to the localhost instead of the actual `backend.raycast.com`. You can also add this 
+The purpose of this modification is to point `backend.raycast.com` to the localhost instead of the actual `backend.raycast.com`. You can also add this
 record in your DNS server.
 
 2. Add the certificate trust to the system keychain
 
 Open the CA certificate in the `cert` folder and add it to the system keychain and trust it.
 This is **necessary** because the Raycast AI Proxy uses a self-signed certificate and it must be trusted to work properly.
+
+Note:
+
+When using macOS on Apple Silicon, if you experience issues with applications hanging when manually adding a CA certificate to
+`Keychain Access`, you can use the following command in the terminal as an alternative method:
+
+[mitmproxy document](https://docs.mitmproxy.org/stable/concepts-certificates/#installing-the-mitmproxy-ca-certificate-manually)
+
+```shell
+sudo security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain ~/.mitmproxy/mitmproxy-ca-cert.pem
+```
