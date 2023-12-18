@@ -80,3 +80,13 @@ export OPENAI_API_KEY=<your openai api key>
 
 打开 `cert` 文件夹中的 ca 证书，并将其添加到系统钥匙链并信任。
 这是**必须**的，因为 Raycast AI 代理使用自签名证书，必须信任它才能正常工作。
+
+注意：
+
+在Apple Silicon的macOS上使用时，如果在手动向`钥匙串访问`添加CA证书时遇到应用程序挂起的问题，您可以在终端使用以下命令作为替代方法：
+
+[mitmproxy document](https://docs.mitmproxy.org/stable/concepts-certificates/#installing-the-mitmproxy-ca-certificate-manually)
+
+```shell
+sudo security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain ~/.mitmproxy/mitmproxy-ca-cert.pem
+```
