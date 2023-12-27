@@ -1,11 +1,8 @@
-import inspect
 import json
 import logging
 import os
 from itertools import chain
 from pathlib import Path
-import pprint
-import sys
 
 
 import httpx
@@ -59,7 +56,6 @@ def check_auth(request: Request):
 @app.on_event("shutdown")
 async def shutdown_event():
     await http_client.aclose()
-
 
 
 FORCE_MODEL = os.environ.get("FORCE_MODEL", None)
