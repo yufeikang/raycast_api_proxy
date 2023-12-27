@@ -1,14 +1,16 @@
+import inspect
 import json
 import logging
 import os
 from itertools import chain
 from pathlib import Path
+import pprint
 import sys
 
 
 import httpx
 import openai
-import google.generativeai as genai
+from google import generativeai as genai
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
 
@@ -78,10 +80,6 @@ if google_api_key:
     genai.configure(api_key=google_api_key)
     logger.info("Using Google API")
 
-if not openai_api_key and not google_api_key:
-    print("OPENAI_API_KEY or GOOGLE_API_KEY must be provided.")
-    sys.exit(1)
-
 
 FORCE_MODEL = os.environ.get("FORCE_MODEL", None)
 
@@ -89,9 +87,9 @@ FORCE_MODEL = os.environ.get("FORCE_MODEL", None)
 SERVICE_PROVIDERS = {
     "openai": [
         {
-            "id": "gpt-3.5-turbo-1106",
-            "model": "gpt-3.5-turbo-1106",
-            "name": "Updated GPT 3.5 Turbo",
+            "id": "openai-gpt-3.5-turbo",
+            "model": "gpt-3.5-turbo",
+            "name": "GPT-3.5 Turbo",
             "provider": "openai",
             "provider_name": "OpenAI",
             "requires_better_ai": True,
@@ -122,6 +120,20 @@ SERVICE_PROVIDERS = {
 MODEL_PROVIDER_MAP = {
     p["id"]: p["provider"] for p in chain.from_iterable(SERVICE_PROVIDERS.values())
 }
+if openai_api_key:
+    RAYCAST_DEFAULT_MODELS = {
+        "chat": "openai-gpt-4-1106-preview",
+        "quick_ai": "openai-gpt-4-1106-preview",
+        "commands": "openai-gpt-3.5-turbo-instruct",
+        "api": "openai-gpt-3.5-turbo-instruct",
+    }
+if google_api_key:
+    RAYCAST_DEFAULT_MODELS = {
+        "chat": "gemini-pro",
+        "quick_ai": "gemini-pro",
+        "commands": "gemini-pro",
+        "api": "gemini-pros",
+    }
 
 
 def get_model_id(raycast_data: dict):
@@ -172,7 +184,7 @@ async def chat_completions_openai(raycast_data: dict):
             chunk = response.choices[0]
             if chunk.finish_reason is not None:
                 logger.debug(f"OpenAI response finish: {chunk.finish_reason}")
-                yield f'data: {json.dumps({"text": "", "finish_reason": "stop"})}\n\n'
+                yield f'data: {json.dumps({"text": "", "finish_reason": chunk.finish_reason})}\n\n'
             if chunk.delta and chunk.delta.content:
                 logger.debug(f"OpenAI response chunk: {chunk.delta.content}")
                 yield f'data: {json.dumps({"text": chunk.delta.content})}\n\n'
@@ -181,8 +193,43 @@ async def chat_completions_openai(raycast_data: dict):
 
 
 async def chat_completions_gemini(raycast_data: dict):
-    # TODO
-    pass
+    model = genai.GenerativeModel(get_model_id(raycast_data))
+
+    google_message = ""
+    temperature = os.environ.get("TEMPERATURE", 0.5)
+    for msg in raycast_data["messages"]:
+        if "system_instructions" in msg["content"]:
+            google_message += msg["content"]["system_instructions"] + "\n"
+        if "command_instructions" in msg["content"]:
+            google_message += msg["content"]["command_instructions"] + "\n"
+        if "additional_system_instructions" in raycast_data:
+            google_message += raycast_data["additional_system_instructions"] + "\n"
+        if "text" in msg["content"]:
+            google_message += msg["content"]["text"] + "\n"
+        if "temperature" in msg["content"]:
+            temperature = msg["content"]["temperature"]
+
+    logger.debug(f"text: {google_message}")
+    result = model.generate_content(
+        google_message,
+        stream=True,
+        generation_config=genai.types.GenerationConfig(
+            candidate_count=1,
+            max_output_tokens=MAX_TOKENS,
+            temperature=temperature,
+        ),
+    )
+
+    def gemini_stream():
+        try:
+            for chunk in result:
+                logger.debug(f"Gemini response chunk: {chunk.text}")
+                yield f'data: {json.dumps({"text": chunk.text})}\n\n'
+        except genai.types.BlockedPromptException as e:
+            logger.debug(f"Gemini response finish: {e}")
+            yield f'data: {json.dumps({"text": "", "finish_reason": e})}\n\n'
+
+    return StreamingResponse(gemini_stream(), media_type="text/event-stream")
 
 
 @app.post("/api/v1/ai/chat_completions")
@@ -195,9 +242,9 @@ async def chat_completions(request: Request):
     model_id = get_model_id(raycast_data)
     logger.debug(f"Use model id: {model_id}")
 
-    if MODEL_PROVIDER_MAP["model"] == "openai" and openai_api_key:
+    if MODEL_PROVIDER_MAP[model_id] == "openai" and openai_api_key:
         return await chat_completions_openai(raycast_data)
-    if MODEL_PROVIDER_MAP["model"] == "google" and google_api_key:
+    if MODEL_PROVIDER_MAP[model_id] == "google" and google_api_key:
         return await chat_completions_gemini(raycast_data)
 
 
@@ -252,12 +299,7 @@ async def proxy_models(request: Request):
     content = response.content
     if response.status_code == 200:
         data = json.loads(content)
-        data["default_models"] = {
-            "chat": "openai-gpt-4-1106-preview",
-            "quick_ai": "openai-gpt-4-1106-preview",
-            "commands": "gpt-3.5-turbo-1106",
-            "api": "gpt-3.5-turbo-1106",
-        }
+        data["default_models"] = RAYCAST_DEFAULT_MODELS
         data["models"] = list(chain.from_iterable(SERVICE_PROVIDERS.values()))
         content = json.dumps(data, ensure_ascii=False).encode("utf-8")
     return Response(
