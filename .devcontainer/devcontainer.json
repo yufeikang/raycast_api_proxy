@@ -22,6 +22,7 @@
     ],
     "remoteEnv": {
         "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}",
+        "GOOGLE_API_KEY": "${localEnv:GOOGLE_API_KEY}",
         "CERT_FILE": "/data/cert/backend.raycast.com.cert.pem",
         "CERT_KEY": "/data/cert/backend.raycast.com.key.pem",
         "LOG_LEVEL": "DEBUG",
