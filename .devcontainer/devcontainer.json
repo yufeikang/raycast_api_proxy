@@ -1,0 +1,33 @@
+{
+    "name": "Python Development",
+    "dockerFile": "../Dockerfile",
+    "build": {
+        "target": "builder"
+    },
+    "context": "..",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.shell.linux": "/bin/bash"
+            },
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-python.black-formatter"
+            ]
+        }
+    },
+    "forwardPorts": [
+        443
+    ],
+    "remoteEnv": {
+        "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}",
+        "CERT_FILE": "/data/cert/backend.raycast.com.cert.pem",
+        "CERT_KEY": "/data/cert/backend.raycast.com.key.pem",
+        "LOG_LEVEL": "DEBUG",
+        "ALLOWED_USERS": "${localEnv:ALLOWED_USERS}",
+        "PYTHONPATH": "/project/__pypackages__/3.9/lib"
+    },
+    "workspaceMount": "source=${localWorkspaceFolder}/app,target=/project/app,type=bind",
+    "workspaceFolder": "/project"
+}
