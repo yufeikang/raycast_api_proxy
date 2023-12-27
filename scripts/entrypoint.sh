@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # check OPENAI_API_KEY env
-if [ -z "$OPENAI_API_KEY" ]; then
-    echo "OPENAI_API_KEY is not set"
+if [ -z "$OPENAI_API_KEY" ] && [ -z "$GOOGLE_API_KEY" ]; then
+    echo "OPENAI_API_KEY or GOOGLE_API_KEY must be set"
     exit 1
 fi
 

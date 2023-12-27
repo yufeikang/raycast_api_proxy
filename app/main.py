@@ -61,28 +61,8 @@ async def shutdown_event():
     await http_client.aclose()
 
 
-openai_api_key = os.environ.get("OPENAI_API_KEY")
-if openai_api_key:
-    openai.api_key = openai_api_key
-    is_azure = openai.api_type in ("azure", "azure_ad", "azuread")
-    if is_azure:
-        logger.info("Using Azure API")
-        openai_client = openai.AzureOpenAI(
-            azure_endpoint=os.environ.get("OPENAI_AZURE_ENDPOINT"),
-            azure_ad_token_provider=os.environ.get("AZURE_DEPLOYMENT_ID", None),
-        )
-    else:
-        logger.info("Using OpenAI API")
-        openai_client = openai.OpenAI()
-
-google_api_key = os.environ.get("GOOGLE_API_KEY")
-if google_api_key:
-    genai.configure(api_key=google_api_key)
-    logger.info("Using Google API")
-
 
 FORCE_MODEL = os.environ.get("FORCE_MODEL", None)
-
 
 SERVICE_PROVIDERS = {
     "openai": [
@@ -117,26 +97,45 @@ SERVICE_PROVIDERS = {
         },
     ],
 }
+
 MODEL_PROVIDER_MAP = {
-    p["id"]: p["provider"] for p in chain.from_iterable(SERVICE_PROVIDERS.values())
+    p["model"]: p["provider"] for p in chain.from_iterable(SERVICE_PROVIDERS.values())
 }
-if openai_api_key:
-    RAYCAST_DEFAULT_MODELS = {
-        "chat": "openai-gpt-4-1106-preview",
-        "quick_ai": "openai-gpt-4-1106-preview",
-        "commands": "openai-gpt-3.5-turbo-instruct",
-        "api": "openai-gpt-3.5-turbo-instruct",
-    }
+
+openai_api_key = os.environ.get("OPENAI_API_KEY")
+google_api_key = os.environ.get("GOOGLE_API_KEY")
 if google_api_key:
+    genai.configure(api_key=google_api_key)
+    logger.info("Using Google API")
+
     RAYCAST_DEFAULT_MODELS = {
         "chat": "gemini-pro",
         "quick_ai": "gemini-pro",
         "commands": "gemini-pro",
         "api": "gemini-pros",
     }
+elif openai_api_key:
+    openai.api_key = openai_api_key
+    is_azure = openai.api_type in ("azure", "azure_ad", "azuread")
+    if is_azure:
+        logger.info("Using Azure API")
+        openai_client = openai.AzureOpenAI(
+            azure_endpoint=os.environ.get("OPENAI_AZURE_ENDPOINT"),
+            azure_ad_token_provider=os.environ.get("AZURE_DEPLOYMENT_ID", None),
+        )
+    else:
+        logger.info("Using OpenAI API")
+        openai_client = openai.OpenAI()
+
+    RAYCAST_DEFAULT_MODELS = {
+        "chat": "openai-gpt-4-1106-preview",
+        "quick_ai": "openai-gpt-4-1106-preview",
+        "commands": "openai-gpt-3.5-turbo-instruct",
+        "api": "openai-gpt-3.5-turbo-instruct",
+    }
 
 
-def get_model_id(raycast_data: dict):
+def get_model(raycast_data: dict):
     return FORCE_MODEL or raycast_data["model"]
 
 
@@ -172,7 +171,7 @@ async def chat_completions_openai(raycast_data: dict):
 
     def openai_stream():
         stream = openai_client.chat.completions.create(
-            model=get_model_id(raycast_data),
+            model=get_model(raycast_data),
             messages=openai_messages,
             max_tokens=MAX_TOKENS,
             n=1,
@@ -193,7 +192,7 @@ async def chat_completions_openai(raycast_data: dict):
 
 
 async def chat_completions_gemini(raycast_data: dict):
-    model = genai.GenerativeModel(get_model_id(raycast_data))
+    model = genai.GenerativeModel(get_model(raycast_data))
 
     google_message = ""
     temperature = os.environ.get("TEMPERATURE", 0.5)
@@ -239,7 +238,7 @@ async def chat_completions(request: Request):
         return Response(status_code=401)
     logger.info(f"Received chat completion request: {raycast_data}")
 
-    model_id = get_model_id(raycast_data)
+    model_id = get_model(raycast_data)
     logger.debug(f"Use model id: {model_id}")
 
     if MODEL_PROVIDER_MAP[model_id] == "openai" and openai_api_key:
