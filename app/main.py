@@ -1,10 +1,14 @@
 import json
 import logging
 import os
+from itertools import chain
 from pathlib import Path
+import sys
+
 
 import httpx
 import openai
+import google.generativeai as genai
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
 
@@ -55,28 +59,76 @@ async def shutdown_event():
     await http_client.aclose()
 
 
-openai.api_key = os.environ["OPENAI_API_KEY"]
-is_azure = openai.api_type in ("azure", "azure_ad", "azuread")
-if is_azure:
-    logger.info("Using Azure API")
-    openai_client = openai.AzureOpenAI(
-        azure_endpoint=os.environ.get("OPENAI_AZURE_ENDPOINT"),
-        azure_ad_token_provider=os.environ.get("AZURE_DEPLOYMENT_ID", None),
-    )
-else:
-    logger.info("Using OpenAI API")
-    openai_client = openai.OpenAI()
+openai_api_key = os.environ.get("OPENAI_API_KEY")
+if openai_api_key:
+    openai.api_key = openai_api_key
+    is_azure = openai.api_type in ("azure", "azure_ad", "azuread")
+    if is_azure:
+        logger.info("Using Azure API")
+        openai_client = openai.AzureOpenAI(
+            azure_endpoint=os.environ.get("OPENAI_AZURE_ENDPOINT"),
+            azure_ad_token_provider=os.environ.get("AZURE_DEPLOYMENT_ID", None),
+        )
+    else:
+        logger.info("Using OpenAI API")
+        openai_client = openai.OpenAI()
+
+google_api_key = os.environ.get("GOOGLE_API_KEY")
+if google_api_key:
+    genai.configure(api_key=google_api_key)
+    logger.info("Using Google API")
+
+if not openai_api_key and not google_api_key:
+    print("OPENAI_API_KEY or GOOGLE_API_KEY must be provided.")
+    sys.exit(1)
 
 
 FORCE_MODEL = os.environ.get("FORCE_MODEL", None)
 
 
-@app.post("/api/v1/ai/chat_completions")
-async def chat_completions(request: Request):
-    raycast_data = await request.json()
-    if not check_auth(request):
-        return Response(status_code=401)
-    logger.info(f"Received chat completion request: {raycast_data}")
+SERVICE_PROVIDERS = {
+    "openai": [
+        {
+            "id": "gpt-3.5-turbo-1106",
+            "model": "gpt-3.5-turbo-1106",
+            "name": "Updated GPT 3.5 Turbo",
+            "provider": "openai",
+            "provider_name": "OpenAI",
+            "requires_better_ai": True,
+            "features": [],
+        },
+        {
+            "id": "openai-gpt-4-1106-preview",
+            "model": "gpt-4-1106-preview",
+            "name": "GPT-4 Turbo",
+            "provider": "openai",
+            "provider_name": "OpenAI",
+            "requires_better_ai": True,
+            "features": [],
+        },
+    ],
+    "google": [
+        {
+            "id": "gemini-pro",
+            "model": "gemini-pro",
+            "name": "Gemini Pro",
+            "provider": "google",
+            "provider_name": "Google",
+            "requires_better_ai": True,
+            "features": [],
+        },
+    ],
+}
+MODEL_PROVIDER_MAP = {
+    p["id"]: p["provider"] for p in chain.from_iterable(SERVICE_PROVIDERS.values())
+}
+
+
+def get_model_id(raycast_data: dict):
+    return FORCE_MODEL or raycast_data["model"]
+
+
+async def chat_completions_openai(raycast_data: dict):
     openai_messages = []
     temperature = os.environ.get("TEMPERATURE", 0.5)
     for msg in raycast_data["messages"]:
@@ -105,11 +157,10 @@ async def chat_completions(request: Request):
             openai_messages.append({"role": "user", "content": msg["content"]["text"]})
         if "temperature" in msg["content"]:
             temperature = msg["content"]["temperature"]
-    model = FORCE_MODEL or raycast_data["model"]
 
     def openai_stream():
         stream = openai_client.chat.completions.create(
-            model=model,
+            model=get_model_id(raycast_data),
             messages=openai_messages,
             max_tokens=MAX_TOKENS,
             n=1,
@@ -127,6 +178,27 @@ async def chat_completions(request: Request):
                 yield f'data: {json.dumps({"text": chunk.delta.content})}\n\n'
 
     return StreamingResponse(openai_stream(), media_type="text/event-stream")
+
+
+async def chat_completions_gemini(raycast_data: dict):
+    # TODO
+    pass
+
+
+@app.post("/api/v1/ai/chat_completions")
+async def chat_completions(request: Request):
+    raycast_data = await request.json()
+    if not check_auth(request):
+        return Response(status_code=401)
+    logger.info(f"Received chat completion request: {raycast_data}")
+
+    model_id = get_model_id(raycast_data)
+    logger.debug(f"Use model id: {model_id}")
+
+    if MODEL_PROVIDER_MAP["model"] == "openai" and openai_api_key:
+        return await chat_completions_openai(raycast_data)
+    if MODEL_PROVIDER_MAP["model"] == "google" and google_api_key:
+        return await chat_completions_gemini(raycast_data)
 
 
 @app.api_route("/api/v1/me", methods=["GET"])
@@ -183,29 +255,10 @@ async def proxy_models(request: Request):
         data["default_models"] = {
             "chat": "openai-gpt-4-1106-preview",
             "quick_ai": "openai-gpt-4-1106-preview",
-            "commands": "openai-gpt-3.5-turbo-instruct",
-            "api": "openai-gpt-3.5-turbo-instruct",
+            "commands": "gpt-3.5-turbo-1106",
+            "api": "gpt-3.5-turbo-1106",
         }
-        data["models"] = [
-            {
-                "id": "openai-gpt-3.5-turbo",
-                "model": "gpt-3.5-turbo",
-                "name": "GPT-3.5 Turbo",
-                "provider": "openai",
-                "provider_name": "OpenAI",
-                "requires_better_ai": True,
-                "features": [],
-            },
-            {
-                "id": "openai-gpt-4-1106-preview",
-                "model": "gpt-4-1106-preview",
-                "name": "GPT-4 Turbo",
-                "provider": "openai",
-                "provider_name": "OpenAI",
-                "requires_better_ai": True,
-                "features": [],
-            },
-        ]
+        data["models"] = list(chain.from_iterable(SERVICE_PROVIDERS.values()))
         content = json.dumps(data, ensure_ascii=False).encode("utf-8")
     return Response(
         status_code=response.status_code,
