@@ -162,3 +162,5 @@ cython_debug/
 cert
 .DS_Store
 .pdm-python
+
+.aider*
