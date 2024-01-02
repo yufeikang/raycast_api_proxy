@@ -53,6 +53,26 @@ docker run --name raycast \
 ```
 
 
+#### Experimental Google Gemini support
+Obtain your [Google API Key](https://makersuite.google.com/app/apikey) and export it as `GOOGLE_API_KEY`.
+
+Currently only `gemini-pro` model is supported.
+
+```sh
+# git clone this repo and cd to it
+docker build -t raycast .
+docker run --name raycast \
+    -e GOOGLE_API_KEY=$GOOGLE_API_KEY \
+    -p 443:443 \
+    --dns 1.1.1.1 \
+    -v $PWD/cert/:/data/cert \
+    -e CERT_FILE=/data/cert/backend.raycast.com.cert.pem \
+    -e CERT_KEY=/data/cert/backend.raycast.com.key.pem \
+    -e LOG_LEVEL=INFO \
+    -d \
+    raycast:latest
+```
+
 ### Install Locally
 
 1. Clone this repository
