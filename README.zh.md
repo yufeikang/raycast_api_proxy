@@ -52,6 +52,26 @@ docker run --name raycast \
     ghcr.io/yufeikang/raycast_api_proxy:main
 ```
 
+#### Google Gemini 实验性支持
+获取你的 [Google API Key](https://makersuite.google.com/app/apikey) 然后 export 为 `GOOGLE_API_KEY`.
+
+目前只支持 `gemini-pro` 模型
+
+```sh
+# git clone this repo and cd to it
+docker build -t raycast .
+docker run --name raycast \
+    -e GOOGLE_API_KEY=$GOOGLE_API_KEY \
+    -p 443:443 \
+    --dns 1.1.1.1 \
+    -v $PWD/cert/:/data/cert \
+    -e CERT_FILE=/data/cert/backend.raycast.com.cert.pem \
+    -e CERT_KEY=/data/cert/backend.raycast.com.key.pem \
+    -e LOG_LEVEL=INFO \
+    -d \
+    raycast:latest
+```
+
 ### 在本地安装
 
 1. clone 本仓库
