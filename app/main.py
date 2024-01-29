@@ -69,7 +69,12 @@ SERVICE_PROVIDERS = {
             "provider": "openai",
             "provider_name": "OpenAI",
             "requires_better_ai": True,
-            "features": [],
+            "features": [
+                "chat",
+                "quick_ai",
+                "commands",
+                "api",
+            ],
         },
         {
             "id": "openai-gpt-4-1106-preview",
@@ -78,7 +83,12 @@ SERVICE_PROVIDERS = {
             "provider": "openai",
             "provider_name": "OpenAI",
             "requires_better_ai": True,
-            "features": [],
+            "features": [
+                "chat",
+                "quick_ai",
+                "commands",
+                "api",
+            ],
         },
     ],
     "google": [
@@ -124,10 +134,10 @@ elif openai_api_key:
         openai_client = openai.OpenAI()
 
     RAYCAST_DEFAULT_MODELS = {
-        "chat": "openai-gpt-4-1106-preview",
-        "quick_ai": "openai-gpt-4-1106-preview",
-        "commands": "openai-gpt-3.5-turbo-instruct",
-        "api": "openai-gpt-3.5-turbo-instruct",
+        "chat": "openai-gpt-3.5-turbo",
+        "quick_ai": "openai-gpt-3.5-turbo",
+        "commands": "openai-gpt-3.5-turbo",
+        "api": "openai-gpt-3.5-turbo",
     }
 
 
