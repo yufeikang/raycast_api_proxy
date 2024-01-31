@@ -53,6 +53,7 @@ docker run --name raycast \
 ```
 
 #### Google Gemini 实验性支持
+
 获取你的 [Google API Key](https://makersuite.google.com/app/apikey) 然后 export 为 `GOOGLE_API_KEY`.
 
 目前只支持 `gemini-pro` 模型
@@ -110,3 +111,9 @@ export OPENAI_API_KEY=<your openai api key>
 ```shell
 sudo security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain ~/.mitmproxy/mitmproxy-ca-cert.pem
 ```
+
+### 注意事项
+
+1. DNS指定
+由于GFW的存在，如果你在中国大陆使用，你可能需要指定一个国内的DNS服务器，否则可能会出现无法解析域名的情况。
+如： `--dns 223.5.5.5`
