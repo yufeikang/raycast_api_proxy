@@ -36,6 +36,9 @@ async def pass_through_request(client: httpx.AsyncClient, request: ProxyRequest)
     if not url.startswith(RAYCAST_BACKEND):
         url = url.replace(url.split("/")[2], RAYCAST_BACKEND.split("/")[2])
 
+    if not url.startswith("https://"):
+        url = url.replace("http://", "https://")
+
     logger.debug(f"Forwarding request to {url}")
     headers = request.headers
     # disable compression, in docker container, it will cause error, unknown reason
