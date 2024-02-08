@@ -21,4 +21,18 @@ license = {text = "MIT"}
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
+[tool.black]
+line-length = 88
+target-version = ['py39']
 
+[tool.isort]
+atomic = true
+profile = "black"
+line_length = 88
+skip_gitignore = true
+
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "black>=24.1.1",
+]

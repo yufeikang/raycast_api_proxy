@@ -38,7 +38,11 @@ class ChatBotAbc(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def chat_completions(self, raycast_data: dict):
+    async def chat_completions(self, raycast_data: dict):
+        pass
+
+    @abc.abstractmethod
+    async def translate_completions(self, raycast_data: dict):
         pass
 
     def get_models(self, raycast_data: dict):
@@ -104,10 +108,45 @@ class OpenAIChatBot(ChatBotAbc):
 
     async def chat_completions(self, raycast_data: dict):
         openai_messages, temperature = self.__build_openai_messages(raycast_data)
+        model = raycast_data["model"]
+        async for choice, error in self.__chat(openai_messages, model, temperature):
+            if error:
+                error_message = (
+                    error.body.get("message", {}) if error.body else error.message
+                )
+                yield f'data: {json.dumps({"text":error_message, "finish_reason":"error"})}\n\n'
+                return
+            if choice.finish_reason is not None:
+                yield f'data: {json.dumps({"text": "", "finish_reason": choice.finish_reason})}\n\n'
+            if choice.delta and choice.delta.content:
+                yield f'data: {json.dumps({"text": choice.delta.content})}\n\n'
+
+    async def translate_completions(self, raycast_data: dict):
+        messages = [
+            {"role": "system", "content": "Translate the following text:"},
+            {
+                "role": "system",
+                "content": f"The target language is: {raycast_data['target']}",
+            },
+            {"role": "user", "content": raycast_data["q"]},
+        ]
+        model = os.environ.get("OPENAI_TRANSLATE_MODEL", "gpt-3.5-turbo")
+        logger.debug(f"Translating: {raycast_data['q']} with model: {model}")
+        async for choice, error in self.__chat(messages, model=model, temperature=0.8):
+            if error:
+                error_message = (
+                    error.body.get("message", {}) if error.body else error.message
+                )
+                yield f"Error: {error_message}"
+                return
+            if choice.delta:
+                yield choice.delta.content
+
+    async def __chat(self, messages, model, temperature):
         try:
             stream = await self.openai_client.chat.completions.create(
-                model=raycast_data["model"],
-                messages=openai_messages,
+                model=model,
+                messages=messages,
                 max_tokens=MAX_TOKENS,
                 n=1,
                 temperature=temperature,
@@ -115,15 +154,10 @@ class OpenAIChatBot(ChatBotAbc):
             )
         except openai.OpenAIError as e:
             logger.error(f"OpenAI error: {e}")
-            yield f'data: {json.dumps({"text": e.message, "finish_reason": "error"})}\n\n'
+            yield None, e
             return
         async for chunk in stream:
-            choice = chunk.choices[0]
-            logger.debug(f"OpenAI response chunk: {choice.delta.content}")
-            if choice.finish_reason is not None:
-                yield f'data: {json.dumps({"text": "", "finish_reason": choice.finish_reason})}\n\n'
-            if choice.delta and choice.delta.content:
-                yield f'data: {json.dumps({"text": choice.delta.content})}\n\n'
+            yield chunk.choices[0], None
 
     def get_models(self, raycast_data: dict):
         default_models = {
@@ -189,14 +223,8 @@ class GeminiChatBot(ChatBotAbc):
                 temperature = msg["content"]["temperature"]
 
         logger.debug(f"text: {google_message}")
-        result = await model.generate_content_async(
-            google_message,
-            stream=True,
-            generation_config=self.genai_client.types.GenerationConfig(
-                candidate_count=1,
-                max_output_tokens=MAX_TOKENS,
-                temperature=temperature,
-            ),
+        result = self.__generate_content(
+            model, google_message, temperature, stream=True
         )
         try:
             async for chunk in result:
@@ -205,6 +233,35 @@ class GeminiChatBot(ChatBotAbc):
         except genai.types.BlockedPromptException as e:
             logger.debug(f"Gemini response finish: {e}")
             yield f'data: {json.dumps({"text": "", "finish_reason": e})}\n\n'
+
+    async def translate_completions(self, raycast_data: dict):
+        model = self.genai_client.GenerativeModel("gemini-pros")
+        target_language = raycast_data["target"]
+        google_message = f"translate the following text to {target_language}:\n"
+        google_message += raycast_data["q"]
+        logger.debug(f"text: {google_message}")
+        result = self.__generate_content(
+            model, google_message, temperature=0.8, stream=False
+        )
+        try:
+            async for chunk in result:
+                logger.debug(f"Gemini response chunk: {chunk.text}")
+                yield chunk.text
+        except genai.types.BlockedPromptException as e:
+            logger.debug(f"Gemini response finish: {e}")
+
+    async def __generate_content(
+        self, model, google_message, temperature, stream=False
+    ):
+        return await model.generate_content(
+            google_message,
+            stream=stream,
+            generation_config=self.genai_client.types.GenerationConfig(
+                candidate_count=1,
+                max_output_tokens=MAX_TOKENS,
+                temperature=temperature,
+            ),
+        )
 
     def get_models(self, raycast_data: dict):
         default_models = {
@@ -274,6 +331,21 @@ async def chat_completions(request: Request):
     return StreamingResponse(
         AI_INSTANCE.chat_completions(raycast_data=raycast_data),
         media_type="text/event-stream",
+    )
+
+
+@app.api_route("/api/v1/translations", methods=["POST"])
+async def proxy_translations(request: Request):
+    raycast_data = await request.json()
+    if not check_auth(request):
+        return Response(status_code=401)
+    result = []
+    async for content in AI_INSTANCE.translate_completions(raycast_data=raycast_data):
+        result.append(content) if content else None
+    translated_text = "".join(result)
+    res = {"data": {"translations": [{"translatedText": translated_text}]}}
+    return Response(
+        status_code=200, content=json.dumps(res), media_type="application/json"
     )
 
 

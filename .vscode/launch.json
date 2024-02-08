@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "Python: FastAPI",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
             "args": [
@@ -22,7 +22,7 @@
             ],
             "env": {
                 "LOG_LEVEL": "DEBUG",
-                "PYTHONPATH": "${workspaceFolder}/__pypackages__/3.11/lib",
+                "PYTHONPATH": "${workspaceFolder}/__pypackages__/3.9/lib",
                 "DNS_SERVER": "1.1.1.1",
             },
             "jinja": true,
