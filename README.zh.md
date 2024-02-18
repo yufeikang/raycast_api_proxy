@@ -5,6 +5,24 @@
 
 [English](README.md) | [中文](README.zh.md)
 
+## 介绍
+
+### 支持的模型
+
+| 模型名称 | 测试状态 | 环境变量 |
+| --- | --- | --- |
+| `openai` | 已测试 | `OPENAI_API_KEY` |
+| `azure openai` | 已测试 | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
+| `gemini` | 实验性 | `GOOGLE_API_KEY` |
+
+### Ai chat
+
+![ai chat](./assert/img/chat.jpeg)
+
+### Translate
+
+![translate](./assert/img/translate.jpg)
+
 ## 使用方法
 
 ### Docker 快速启动
