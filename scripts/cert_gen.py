@@ -25,7 +25,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--org", dest="org", type=str, default="mitmporxy", help="openssl organization name"
+    "--org", dest="org", type=str, default="mitmproxy", help="openssl organization name"
 )
 
 args = parser.parse_args()
