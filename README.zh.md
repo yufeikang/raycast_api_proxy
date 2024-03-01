@@ -1,19 +1,19 @@
-# Raycast AI Proxy
+# Raycast AI 代理
 
-This is a simple [Raycast AI](https://raycast.com/) API proxy. It allows you to use the [Raycast AI](https://raycast.com/ai) app without a subscription.
-It's a simple proxy that forwards requests from Raycast to the OpenAI API, converts the format, and returns the response in real-time.
+这是一个简单的 [Raycast AI](https://raycast.com/)API代理。它允许您在不订阅的情况下使用 [Raycast AI](https://raycast.com/ai)
+应用。它是一个简单的代理，将raycast的请求转换格式转发到 OpenAI 的 API，响应后再实时转换格式返回。
 
 [English](README.md) | [中文](README.zh.md)
 
-## Introduction
+## 介绍
 
-### Supported Models
+### 支持的模型
 
-| Model Name | Test Status | Environment Variables |
+| 模型名称 | 测试状态 | 环境变量 |
 | --- | --- | --- |
-| `openai` | Tested | `OPENAI_API_KEY` |
-| `azure openai` | Tested | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
-| `gemini` | Experimental | `GOOGLE_API_KEY` |
+| `openai` | 已测试 | `OPENAI_API_KEY` |
+| `azure openai` | 已测试 | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
+| `gemini` | 实验性 | `GOOGLE_API_KEY` |
 
 ### Ai chat
 
@@ -23,18 +23,18 @@ It's a simple proxy that forwards requests from Raycast to the OpenAI API, conve
 
 ![translate](./assert/img/translate.jpg)
 
-## How to Use
+## 使用方法
 
-### Quick Start with Docker
+### Docker 快速启动
 
-1. Generate certificates
+1. 生成证书
 
 ```sh
 pip3 install mitmproxy
 python -c "$(curl -fsSL https://raw.githubusercontent.com/yufeikang/raycast_api_proxy/main/scripts/cert_gen.py)"  --domain backend.raycast.com  --out ./cert
 ```
 
-2. Start the service
+2. 启动服务
 
 ```sh
 docker run --name raycast \
@@ -49,7 +49,7 @@ docker run --name raycast \
     ghcr.io/yufeikang/raycast_api_proxy:main
 ```
 
-3. Change the OPENAI environment variable to using the Azure OpenAI API
+3. 使用 Azure OpenAI API
 
 See [How to switch between OpenAI and Azure OpenAI endpoints with Python](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints)
 
@@ -70,11 +70,11 @@ docker run --name raycast \
     ghcr.io/yufeikang/raycast_api_proxy:main
 ```
 
-#### Experimental Google Gemini support
+#### Google Gemini 实验性支持
 
-Obtain your [Google API Key](https://makersuite.google.com/app/apikey) and export it as `GOOGLE_API_KEY`.
+获取你的 [Google API Key](https://makersuite.google.com/app/apikey) 然后 export 为 `GOOGLE_API_KEY`.
 
-Currently only `gemini-pro` model is supported.
+目前只支持 `gemini-pro` 模型
 
 ```sh
 # git clone this repo and cd to it
@@ -91,43 +91,47 @@ docker run --name raycast \
     raycast:latest
 ```
 
-### Install Locally
+### 在本地安装
 
-1. Clone this repository
-2. Use `pdm install` to install dependencies
-3. Create an environment variable
+1. clone 本仓库
+2. 使用 `pdm install` 安装依赖项
+3. 创建环境变量
 
 ```
 export OPENAI_API_KEY=<your openai api key>
 ```
 
-4. Use `./scripts/cert_gen.py --domain backend.raycast.com  --out ./cert` to generate a self-signed certificate
-5. Start the service with `python ./app/main.py`
+4. 使用 `./scripts/cert_gen.py --domain backend.raycast.com  --out ./cert` 生成自签名证书
+5. 用`python ./app/main.py`启动服务
 
-### Configuration
+### 配置
 
-1. Modify `/etc/host` to add the following line:
+1. 修改 `/etc/host` 以添加以下行：
 
 ```
 127.0.0.1 backend.raycast.com
 ::1 backend.raycast.com
 ```
 
-The purpose of this modification is to point `backend.raycast.com` to the localhost instead of the actual `backend.raycast.com`. You can also add this
-record in your DNS server.
+此修改的目的是为了把 `backend.raycast.com` 指定到本地，而不是真正的 `backend.raycast.com`。当然你也可以在你的dns server中添加这个记录。
 
-2. Add the certificate trust to the system keychain
+2. 将证书信任添加到系统钥匙链
 
-Open the CA certificate in the `cert` folder and add it to the system keychain and trust it.
-This is **necessary** because the Raycast AI Proxy uses a self-signed certificate and it must be trusted to work properly.
+打开 `cert` 文件夹中的 ca 证书，并将其添加到系统钥匙链并信任。
+这是**必须**的，因为 Raycast AI 代理使用自签名证书，必须信任它才能正常工作。
 
-Note:
+注意：
 
-When using macOS on Apple Silicon, if you experience issues with applications hanging when manually adding a CA certificate to
-`Keychain Access`, you can use the following command in the terminal as an alternative method:
+在Apple Silicon的macOS上使用时，如果在手动向`钥匙串访问`添加CA证书时遇到应用程序挂起的问题，您可以在终端使用以下命令作为替代方法：
 
 [mitmproxy document](https://docs.mitmproxy.org/stable/concepts-certificates/#installing-the-mitmproxy-ca-certificate-manually)
 
 ```shell
 sudo security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain ~/.mitmproxy/mitmproxy-ca-cert.pem
 ```
+
+### 注意事项
+
+1. DNS指定
+由于GFW的存在，如果你在中国大陆使用，你可能需要指定一个国内的DNS服务器，否则可能会出现无法解析域名的情况。
+如： `--dns 223.5.5.5`

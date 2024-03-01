@@ -2,7 +2,8 @@
 
 docker build -t raycast .
 docker run --rm -it \
-    -e OPENAI_API_KEY=$OPENAI_API_KEY \
+    $([[ -n $OPENAI_API_KEY ]] && echo -n "-e OPENAI_API_KEY=$OPENAI_API_KEY") \
+    $([[ -n $GOOGLE_API_KEY ]] && echo -n "-e GOOGLE_API_KEY=$GOOGLE_API_KEY") \
     -p 443:443 \
     --dns 1.1.1.1 \
     -v $PWD/cert/:/data/cert \

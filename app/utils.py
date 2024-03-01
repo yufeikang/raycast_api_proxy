@@ -7,6 +7,8 @@ from fastapi import HTTPException
 
 logger = logging.getLogger("proxy")
 
+RAYCAST_BACKEND = "https://backend.raycast.com"
+
 
 @dataclass
 class ProxyRequest:
@@ -28,13 +30,20 @@ async def pass_through_request(client: httpx.AsyncClient, request: ProxyRequest)
     logger.info(f"Received request: {request.method} {request.url}")
 
     url = request.url
-    if not url.startswith("https://") and url.startswith("http://"):
+
+    # if host is not raycast_backend, replace it with raycast_backend
+    # when use mitm tool, the host be replaced
+    if not url.startswith(RAYCAST_BACKEND):
+        url = url.replace(url.split("/")[2], RAYCAST_BACKEND.split("/")[2])
+
+    if not url.startswith("https://"):
         url = url.replace("http://", "https://")
 
     logger.debug(f"Forwarding request to {url}")
     headers = request.headers
     # disable compression, in docker container, it will cause error, unknown reason
     headers["accept-encoding"] = "identity"
+    headers["host"] = RAYCAST_BACKEND.split("/")[2]
     try:
         response = await client.request(
             request.method,
