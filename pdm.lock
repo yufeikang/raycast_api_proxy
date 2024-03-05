@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform"]
 lock_version = "4.4.1"
-content_hash = "sha256:5c45ad2b41b73cf54b24ae484f7ec7dd90db13bae122c9efd0d4bb348aef1146"
+content_hash = "sha256:03399dc6cd233823cfee68058cfc60ce17fb64460d9deba889facb09d7b84fa8"
 
 [[package]]
 name = "anyio"
@@ -259,19 +259,20 @@ files = [
 
 [[package]]
 name = "google-generativeai"
-version = "0.3.2"
+version = "0.4.0"
 requires_python = ">=3.9"
 summary = "Google Generative AI High level API client library and tools."
 dependencies = [
     "google-ai-generativelanguage==0.4.0",
     "google-api-core",
-    "google-auth",
+    "google-auth>=2.15.0",
     "protobuf",
+    "pydantic",
     "tqdm",
     "typing-extensions",
 ]
 files = [
-    {file = "google_generativeai-0.3.2-py3-none-any.whl", hash = "sha256:8761147e6e167141932dc14a7b7af08f2310dd56668a78d206c19bb8bd85bcd7"},
+    {file = "google_generativeai-0.4.0-py3-none-any.whl", hash = "sha256:cf53a51f7c22f0193685e39708e015119b2500626bb2e74ad8c2bf8d8568ef1e"},
 ]
 
 [[package]]
