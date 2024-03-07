@@ -6,9 +6,10 @@ from pathlib import Path
 
 import httpx
 import openai
+import google.generativeai as genai
+from google.generativeai import GenerativeModel
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
-from google import generativeai as genai
 
 from app.utils import ProxyRequest, pass_through_request
 
@@ -204,10 +205,14 @@ class GeminiChatBot(ChatBotAbc):
         super().__init__()
         logger.info("Using Google API")
         google_api_key = os.environ.get("GOOGLE_API_KEY")
-        self.genai_client = genai.configure(api_key=google_api_key)
+        genai.configure(api_key=google_api_key)
+
+    @classmethod
+    def is_start_available(cls):
+        return os.environ.get("GOOGLE_API_KEY")
 
     async def chat_completions(self, raycast_data: dict):
-        model = self.genai_client.GenerativeModel(raycast_data["model"])
+        model = genai.GenerativeModel("gemini-pro")
         google_message = ""
         temperature = os.environ.get("TEMPERATURE", 0.5)
         for msg in raycast_data["messages"]:
@@ -227,36 +232,38 @@ class GeminiChatBot(ChatBotAbc):
             model, google_message, temperature, stream=True
         )
         try:
-            async for chunk in result:
-                logger.debug(f"Gemini response chunk: {chunk.text}")
+            for chunk in result:
+                logger.debug(f"Gemini chat_completions response chunk: {chunk.text}")
                 yield f'data: {json.dumps({"text": chunk.text})}\n\n'
         except genai.types.BlockedPromptException as e:
             logger.debug(f"Gemini response finish: {e}")
             yield f'data: {json.dumps({"text": "", "finish_reason": e})}\n\n'
 
     async def translate_completions(self, raycast_data: dict):
-        model = self.genai_client.GenerativeModel("gemini-pros")
+        model = genai.GenerativeModel("gemini-pro")
         target_language = raycast_data["target"]
         google_message = f"translate the following text to {target_language}:\n"
         google_message += raycast_data["q"]
         logger.debug(f"text: {google_message}")
         result = self.__generate_content(
-            model, google_message, temperature=0.8, stream=False
+            model, google_message, temperature=0.8, stream=True
         )
         try:
-            async for chunk in result:
-                logger.debug(f"Gemini response chunk: {chunk.text}")
+            for chunk in result:
+                logger.debug(
+                    f"Gemini translate_completions response chunk: {chunk.text}"
+                )
                 yield chunk.text
         except genai.types.BlockedPromptException as e:
             logger.debug(f"Gemini response finish: {e}")
 
-    async def __generate_content(
-        self, model, google_message, temperature, stream=False
+    def __generate_content(
+        self, model: GenerativeModel, google_message, temperature, stream=False
     ):
-        return await model.generate_content(
+        return model.generate_content(
             google_message,
             stream=stream,
-            generation_config=self.genai_client.types.GenerationConfig(
+            generation_config=genai.types.GenerationConfig(
                 candidate_count=1,
                 max_output_tokens=MAX_TOKENS,
                 temperature=temperature,
@@ -268,7 +275,7 @@ class GeminiChatBot(ChatBotAbc):
             "chat": "gemini-pro",
             "quick_ai": "gemini-pro",
             "commands": "gemini-pro",
-            "api": "gemini-pros",
+            "api": "gemini-pro",
         }
         models = [
             {
@@ -290,7 +297,7 @@ class GeminiChatBot(ChatBotAbc):
 
 
 AI_INSTANCE: ChatBotAbc = (
-    OpenAIChatBot() if OpenAIChatBot.is_start_available() else GeminiChatBot()
+    GeminiChatBot() if GeminiChatBot.is_start_available() else OpenAIChatBot()
 )
 
 

@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  raycast:
+    container_name: raycast
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    dns:
+      - 1.1.1.1
+    volumes:
+      - "$PWD/app:/project/app"
+      - "$PWD/logs:/project/logs"
+    command: --reload
+    env_file:
+      - .env
+networks:
+  default:
+    external: true
+    name: nginx_proxy
