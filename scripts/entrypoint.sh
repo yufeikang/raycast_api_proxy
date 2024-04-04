@@ -1,11 +1,5 @@
 #!/bin/sh
 
-# check OPENAI_API_KEY env
-if [ -z "$OPENAI_API_KEY" ] && [ -z "$GOOGLE_API_KEY" ]; then
-    echo "OPENAI_API_KEY or GOOGLE_API_KEY must be set"
-    exit 1
-fi
-
 # if has CERT_FILE env and CERT_KEY env, run uvicorn with ssl
 
 if [ -n "$CERT_FILE" ] && [ -n "$CERT_KEY" ]; then

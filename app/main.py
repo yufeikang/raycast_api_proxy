@@ -4,12 +4,12 @@ import logging
 import os
 from pathlib import Path
 
+import google.generativeai as genai
 import httpx
 import openai
-import google.generativeai as genai
-from google.generativeai import GenerativeModel
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
+from google.generativeai import GenerativeModel
 
 from app.utils import ProxyRequest, pass_through_request
 
@@ -46,7 +46,7 @@ class ChatBotAbc(abc.ABC):
     async def translate_completions(self, raycast_data: dict):
         pass
 
-    def get_models(self, raycast_data: dict):
+    def get_models(self):
         pass
 
 
@@ -160,7 +160,7 @@ class OpenAIChatBot(ChatBotAbc):
         async for chunk in stream:
             yield chunk.choices[0], None
 
-    def get_models(self, raycast_data: dict):
+    def get_models(self):
         default_models = {
             "chat": "openai-gpt-3.5-turbo",
             "quick_ai": "openai-gpt-3.5-turbo",
@@ -212,7 +212,8 @@ class GeminiChatBot(ChatBotAbc):
         return os.environ.get("GOOGLE_API_KEY")
 
     async def chat_completions(self, raycast_data: dict):
-        model = genai.GenerativeModel("gemini-pro")
+        model_name = raycast_data["model"]
+        model = genai.GenerativeModel(model_name)
         google_message = ""
         temperature = os.environ.get("TEMPERATURE", 0.5)
         for msg in raycast_data["messages"]:
@@ -240,7 +241,8 @@ class GeminiChatBot(ChatBotAbc):
             yield f'data: {json.dumps({"text": "", "finish_reason": e})}\n\n'
 
     async def translate_completions(self, raycast_data: dict):
-        model = genai.GenerativeModel("gemini-pro")
+        model_name = raycast_data["model"]
+        model = genai.GenerativeModel(model_name)
         target_language = raycast_data["target"]
         google_message = f"translate the following text to {target_language}:\n"
         google_message += raycast_data["q"]
@@ -270,7 +272,7 @@ class GeminiChatBot(ChatBotAbc):
             ),
         )
 
-    def get_models(self, raycast_data: dict):
+    def get_models(self):
         default_models = {
             "chat": "gemini-pro",
             "quick_ai": "gemini-pro",
@@ -291,14 +293,48 @@ class GeminiChatBot(ChatBotAbc):
                     "commands",
                     "api",
                 ],
-            }
+            },
+            {
+                "id": "gemini-1.5-pro",
+                "model": "gemini-1.5-pro",
+                "name": "Gemini 1.5 Pro",
+                "provider": "google",
+                "provider_name": "Google",
+                "requires_better_ai": True,
+                "features": [
+                    "chat",
+                    "quick_ai",
+                    "commands",
+                    "api",
+                ],
+            },
         ]
         return {"default_models": default_models, "models": models}
 
 
-AI_INSTANCE: ChatBotAbc = (
-    GeminiChatBot() if GeminiChatBot.is_start_available() else OpenAIChatBot()
-)
+MODELS_DICT = {}
+MODELS_AVAILABLE = []
+DEFAULT_MODELS = {}
+if GeminiChatBot.is_start_available():
+    logger.info("Google API is available")
+    _bot = GeminiChatBot()
+    _models = _bot.get_models()
+    MODELS_AVAILABLE.extend(_models["models"])
+    DEFAULT_MODELS = _models["default_models"]
+    MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
+if OpenAIChatBot.is_start_available():
+    logger.info("OpenAI API is available")
+    _bot = OpenAIChatBot()
+    _models = _bot.get_models()
+    MODELS_AVAILABLE.extend(_models["models"])
+    DEFAULT_MODELS.update(_models["default_models"])
+    MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
+
+
+def _get_bot(model_id):
+    if not model_id:
+        return MODELS_DICT.values()[0]
+    return MODELS_DICT.get(model_id)
 
 
 def add_user(request: Request, user_email: str):
@@ -333,10 +369,10 @@ async def chat_completions(request: Request):
     raycast_data = await request.json()
     if not check_auth(request):
         return Response(status_code=401)
-    logger.info("Received chat completion request")
-
+    logger.debug(f"Received chat completion request: {raycast_data}")
+    model_name = raycast_data.get("model")
     return StreamingResponse(
-        AI_INSTANCE.chat_completions(raycast_data=raycast_data),
+        _get_bot(model_name).chat_completions(raycast_data=raycast_data),
         media_type="text/event-stream",
     )
 
@@ -347,7 +383,10 @@ async def proxy_translations(request: Request):
     if not check_auth(request):
         return Response(status_code=401)
     result = []
-    async for content in AI_INSTANCE.translate_completions(raycast_data=raycast_data):
+    model_name = raycast_data.get("model")
+    async for content in _get_bot(model_name).translate_completions(
+        raycast_data=raycast_data
+    ):
         result.append(content) if content else None
     translated_text = "".join(result)
     res = {"data": {"translations": [{"translatedText": translated_text}]}}
@@ -407,7 +446,7 @@ async def proxy_models(request: Request):
     content = response.content
     if response.status_code == 200:
         data = json.loads(content)
-        data.update(AI_INSTANCE.get_models(data))
+        data.update({"default_models": DEFAULT_MODELS, "models": MODELS_AVAILABLE})
         content = json.dumps(data, ensure_ascii=False).encode("utf-8")
     return Response(
         status_code=response.status_code,
