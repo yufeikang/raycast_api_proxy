@@ -68,7 +68,7 @@ class OpenAIChatBot(ChatBotAbc):
             logger.info("Using Azure API")
             self.openai_client = openai.AsyncAzureOpenAI(
                 azure_endpoint=os.environ.get("OPENAI_AZURE_ENDPOINT"),
-                azure_ad_token_provider=os.environ.get("AZURE_DEPLOYMENT_ID", None),
+                azure_deployment=os.environ.get("AZURE_DEPLOYMENT_ID", None),
             )
         else:
             logger.info("Using OpenAI API")
