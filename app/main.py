@@ -241,7 +241,7 @@ class GeminiChatBot(ChatBotAbc):
             yield f'data: {json.dumps({"text": "", "finish_reason": e})}\n\n'
 
     async def translate_completions(self, raycast_data: dict):
-        model_name = raycast_data["model"]
+        model_name = raycast_data.get("model", "gemini-pro")
         model = genai.GenerativeModel(model_name)
         target_language = raycast_data["target"]
         google_message = f"translate the following text to {target_language}:\n"
@@ -333,7 +333,7 @@ if OpenAIChatBot.is_start_available():
 
 def _get_bot(model_id):
     if not model_id:
-        return MODELS_DICT.values()[0]
+        return next(iter(MODELS_DICT.values()))
     return MODELS_DICT.get(model_id)
 
 
@@ -383,6 +383,7 @@ async def proxy_translations(request: Request):
     if not check_auth(request):
         return Response(status_code=401)
     result = []
+    logger.debug(f"Received translation request: {raycast_data}")
     model_name = raycast_data.get("model")
     async for content in _get_bot(model_name).translate_completions(
         raycast_data=raycast_data
