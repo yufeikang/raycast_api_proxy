@@ -296,7 +296,7 @@ class GeminiChatBot(ChatBotAbc):
             },
             {
                 "id": "gemini-1.5-pro",
-                "model": "gemini-1.5-pro",
+                "model": "gemini-1.5-pro-latest",
                 "name": "Gemini 1.5 Pro",
                 "provider": "google",
                 "provider_name": "Google",
