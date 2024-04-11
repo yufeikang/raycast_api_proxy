@@ -101,7 +101,7 @@ class OpenAIChatBot(ChatBotAbc):
                 )
             if "text" in msg["content"]:
                 openai_messages.append(
-                    {"role": msg["role"], "content": msg["content"]["text"]}
+                    {"role": msg["author"], "content": msg["content"]["text"]}
                 )
             if "temperature" in msg["content"]:
                 temperature = msg["content"]["temperature"]
@@ -225,8 +225,8 @@ class GeminiChatBot(ChatBotAbc):
                 parts.append({"text": msg["content"]["command_instructions"]})
             if "text" in msg["content"]:
                 parts.append({"text": msg["content"]["text"]})
-            if "role" in msg:
-                role = "user" if msg["role"] == "user" else "model"
+            if "author" in msg:
+                role = "user" if msg["author"] == "user" else "model"
                 content["role"] = role
             if "temperature" in msg["content"]:
                 temperature = msg["content"]["temperature"]
