@@ -101,7 +101,7 @@ class OpenAIChatBot(ChatBotAbc):
                 )
             if "text" in msg["content"]:
                 openai_messages.append(
-                    {"role": "user", "content": msg["content"]["text"]}
+                    {"role": msg["role"], "content": msg["content"]["text"]}
                 )
             if "temperature" in msg["content"]:
                 temperature = msg["content"]["temperature"]
@@ -214,19 +214,24 @@ class GeminiChatBot(ChatBotAbc):
     async def chat_completions(self, raycast_data: dict):
         model_name = raycast_data["model"]
         model = genai.GenerativeModel(model_name)
-        google_message = ""
+        google_message = []
         temperature = os.environ.get("TEMPERATURE", 0.5)
         for msg in raycast_data["messages"]:
+            content = {"role": "user"}
+            parts = []
             if "system_instructions" in msg["content"]:
-                google_message += msg["content"]["system_instructions"] + "\n"
+                parts.append({"text": msg["content"]["system_instructions"]})
             if "command_instructions" in msg["content"]:
-                google_message += msg["content"]["command_instructions"] + "\n"
-            if "additional_system_instructions" in raycast_data:
-                google_message += raycast_data["additional_system_instructions"] + "\n"
+                parts.append({"text": msg["content"]["command_instructions"]})
             if "text" in msg["content"]:
-                google_message += msg["content"]["text"] + "\n"
+                parts.append({"text": msg["content"]["text"]})
+            if "role" in msg:
+                role = "user" if msg["role"] == "user" else "model"
+                content["role"] = role
             if "temperature" in msg["content"]:
                 temperature = msg["content"]["temperature"]
+            content["parts"] = parts
+            google_message.append(content)
 
         logger.debug(f"text: {google_message}")
         result = self.__generate_content(
