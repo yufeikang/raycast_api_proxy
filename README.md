@@ -8,12 +8,14 @@ It's a simple proxy that forwards requests from Raycast to the OpenAI API, conve
 ## Introduction
 
 ### Supported Models
+>
+> Multiple models can be used simultaneously by setting the corresponding environment variables
 
-| Model Name | Test Status | Environment Variables |
-| --- | --- | --- |
-| `openai` | Tested | `OPENAI_API_KEY` |
-| `azure openai` | Tested | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
-| `gemini` | Experimental | `GOOGLE_API_KEY` |
+| Provider | Model Name | Test Status | Environment Variables |
+| --- | --- | --- | --- |
+| `openai` | gpt-3.5-turbo,gpt-4-turbo | Tested | `OPENAI_API_KEY` |
+| `azure openai` | - | Tested | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
+| `google` | gemini-pro,gemini-1.5-pro | Tested | `GOOGLE_API_KEY` |
 
 ### Ai chat
 
@@ -70,11 +72,11 @@ docker run --name raycast \
     ghcr.io/yufeikang/raycast_api_proxy:main
 ```
 
-#### Experimental Google Gemini support
+4. Experimental Google Gemini support
+
+> Can be used simultaneously with the OpenAI API, just set the corresponding environment variables
 
 Obtain your [Google API Key](https://makersuite.google.com/app/apikey) and export it as `GOOGLE_API_KEY`.
-
-Currently only `gemini-pro` model is supported.
 
 ```sh
 # git clone this repo and cd to it

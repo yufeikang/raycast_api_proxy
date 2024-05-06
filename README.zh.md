@@ -8,12 +8,14 @@
 ## 介绍
 
 ### 支持的模型
+>
+> 多个模型可以同时使用，只需设置相应的环境变量即可
 
-| 模型名称 | 测试状态 | 环境变量 |
-| --- | --- | --- |
-| `openai` | 已测试 | `OPENAI_API_KEY` |
-| `azure openai` | 已测试 | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
-| `gemini` | 实验性 | `GOOGLE_API_KEY` |
+| 模型provider | 模型 | 测试状态 | 环境变量 |
+| --- | --- | --- | --- |
+| `openai` | gpt-3.5-turbo,gpt-4-turbo | 已测试 | `OPENAI_API_KEY` |
+| `azure openai` | 同上 | 已测试 | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
+| `google` | gemini-pro,gemini-1.5-pro | 已测试 | `GOOGLE_API_KEY` |
 
 ### Ai chat
 
@@ -70,11 +72,11 @@ docker run --name raycast \
     ghcr.io/yufeikang/raycast_api_proxy:main
 ```
 
-#### Google Gemini 实验性支持
+4. Google Gemini API
+
+> 可同时和 OpenAI API 一起使用，只需设置相应的环境变量即可
 
 获取你的 [Google API Key](https://makersuite.google.com/app/apikey) 然后 export 为 `GOOGLE_API_KEY`.
-
-目前只支持 `gemini-pro` 模型
 
 ```sh
 # git clone this repo and cd to it
