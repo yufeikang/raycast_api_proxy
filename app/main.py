@@ -41,6 +41,21 @@ def _get_default_model_dict(model_name: str):
     }
 
 
+def _get_model_extra_info():
+    return {
+        "description": "model description",
+        "requires_better_ai": True,
+        "features": ["chat", "quick_ai", "commands", "api", "emoji_search"],
+        "suggestions": ["chat", "quick_ai", "commands", "api", "emoji_search"],
+        "capabilities": {},
+        "abilities": {},
+        "availability": "public",
+        "status": None,
+        "speed": 3,
+        "intelligence": 3,
+    }
+
+
 class ChatBotAbc(abc.ABC):
 
     @classmethod
@@ -180,28 +195,8 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
-                "requires_better_ai": True,
-                "features": [
-                    "chat",
-                    "quick_ai",
-                    "commands",
-                    "api",
-                    "emoji_search",
-                ],
-                "suggestions": [
-                    "chat",
-                    "quick_ai",
-                    "commands",
-                    "api",
-                    "emoji_search",
-                ],
-                "capabilities": {},
-                "abilities": {},
-                "availability": "public",
-                "status": None,
-                "speed": 3,
-                "intelligence": 3,
                 "context": 16,
+                **_get_model_extra_info(),
             },
             {
                 "id": "openai-gpt-4-turbo",
@@ -210,28 +205,8 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
-                "requires_better_ai": True,
-                "features": [
-                    "chat",
-                    "quick_ai",
-                    "commands",
-                    "api",
-                    "emoji_search",
-                ],
-                "suggestions": [
-                    "chat",
-                    "quick_ai",
-                    "commands",
-                    "api",
-                    "emoji_search",
-                ],
-                "capabilities": {},
-                "abilities": {},
-                "availability": "public",
-                "status": None,
-                "speed": 3,
-                "intelligence": 3,
-                "context": 16,
+                "context": 8,
+                **_get_model_extra_info(),
             },
         ]
         return {"default_models": default_models, "models": models}
@@ -324,28 +299,8 @@ class GeminiChatBot(ChatBotAbc):
                 "provider": "google",
                 "provider_name": "Google",
                 "provider_brand": "google",
-                "requires_better_ai": True,
-                "features": [
-                    "chat",
-                    "quick_ai",
-                    "commands",
-                    "api",
-                    "emoji_search",
-                ],
-                "suggestions": [
-                    "chat",
-                    "quick_ai",
-                    "commands",
-                    "api",
-                    "emoji_search",
-                ],
-                "capabilities": {},
-                "abilities": {},
-                "availability": "public",
-                "status": None,
-                "speed": 3,
-                "intelligence": 3,
                 "context": 16,
+                **_get_model_extra_info(),
             },
             {
                 "id": "gemini-1.5-pro",
@@ -353,28 +308,9 @@ class GeminiChatBot(ChatBotAbc):
                 "name": "Gemini 1.5 Pro",
                 "provider": "google",
                 "provider_name": "Google",
-                "requires_better_ai": True,
-                "features": [
-                    "chat",
-                    "quick_ai",
-                    "commands",
-                    "api",
-                    "emoji_search",
-                ],
-                "suggestions": [
-                    "chat",
-                    "quick_ai",
-                    "commands",
-                    "api",
-                    "emoji_search",
-                ],
-                "capabilities": {},
-                "abilities": {},
-                "availability": "public",
-                "status": None,
-                "speed": 3,
-                "intelligence": 3,
+                "provider_brand": "google",
                 "context": 16,
+                **_get_model_extra_info(),
             },
         ]
         return {"default_models": default_models, "models": models}
