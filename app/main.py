@@ -31,6 +31,16 @@ ALLOWED_USERS = (
 MAX_TOKENS = os.environ.get("MAX_TOKENS", 1024)
 
 
+def _get_default_model_dict(model_name: str):
+    return {
+        "chat": model_name,
+        "quick_ai": model_name,
+        "commands": model_name,
+        "api": model_name,
+        "emoji_search": model_name,
+    }
+
+
 class ChatBotAbc(abc.ABC):
 
     @classmethod
@@ -161,12 +171,7 @@ class OpenAIChatBot(ChatBotAbc):
             yield chunk.choices[0], None
 
     def get_models(self):
-        default_models = {
-            "chat": "openai-gpt-3.5-turbo",
-            "quick_ai": "openai-gpt-3.5-turbo",
-            "commands": "openai-gpt-3.5-turbo",
-            "api": "openai-gpt-3.5-turbo",
-        }
+        default_models = _get_default_model_dict("openai-gpt-3.5-turbo")
         models = [
             {
                 "id": "openai-gpt-3.5-turbo",
@@ -174,27 +179,59 @@ class OpenAIChatBot(ChatBotAbc):
                 "name": "GPT-3.5 Turbo",
                 "provider": "openai",
                 "provider_name": "OpenAI",
+                "provider_brand": "openai",
                 "requires_better_ai": True,
                 "features": [
                     "chat",
                     "quick_ai",
                     "commands",
                     "api",
+                    "emoji_search",
                 ],
+                "suggestions": [
+                    "chat",
+                    "quick_ai",
+                    "commands",
+                    "api",
+                    "emoji_search",
+                ],
+                "capabilities": {},
+                "abilities": {},
+                "availability": "public",
+                "status": None,
+                "speed": 3,
+                "intelligence": 3,
+                "context": 16,
             },
             {
-                "id": "openai-gpt-4-1106-preview",
-                "model": "gpt-4-1106-preview",
+                "id": "openai-gpt-4-turbo",
+                "model": "gpt-4-turbo",
                 "name": "GPT-4 Turbo",
                 "provider": "openai",
                 "provider_name": "OpenAI",
+                "provider_brand": "openai",
                 "requires_better_ai": True,
                 "features": [
                     "chat",
                     "quick_ai",
                     "commands",
                     "api",
+                    "emoji_search",
                 ],
+                "suggestions": [
+                    "chat",
+                    "quick_ai",
+                    "commands",
+                    "api",
+                    "emoji_search",
+                ],
+                "capabilities": {},
+                "abilities": {},
+                "availability": "public",
+                "status": None,
+                "speed": 3,
+                "intelligence": 3,
+                "context": 16,
             },
         ]
         return {"default_models": default_models, "models": models}
@@ -278,12 +315,7 @@ class GeminiChatBot(ChatBotAbc):
         )
 
     def get_models(self):
-        default_models = {
-            "chat": "gemini-pro",
-            "quick_ai": "gemini-pro",
-            "commands": "gemini-pro",
-            "api": "gemini-pro",
-        }
+        default_models = _get_default_model_dict("gemini-pro")
         models = [
             {
                 "id": "gemini-pro",
@@ -291,13 +323,29 @@ class GeminiChatBot(ChatBotAbc):
                 "name": "Gemini Pro",
                 "provider": "google",
                 "provider_name": "Google",
+                "provider_brand": "google",
                 "requires_better_ai": True,
                 "features": [
                     "chat",
                     "quick_ai",
                     "commands",
                     "api",
+                    "emoji_search",
                 ],
+                "suggestions": [
+                    "chat",
+                    "quick_ai",
+                    "commands",
+                    "api",
+                    "emoji_search",
+                ],
+                "capabilities": {},
+                "abilities": {},
+                "availability": "public",
+                "status": None,
+                "speed": 3,
+                "intelligence": 3,
+                "context": 16,
             },
             {
                 "id": "gemini-1.5-pro",
@@ -311,7 +359,22 @@ class GeminiChatBot(ChatBotAbc):
                     "quick_ai",
                     "commands",
                     "api",
+                    "emoji_search",
                 ],
+                "suggestions": [
+                    "chat",
+                    "quick_ai",
+                    "commands",
+                    "api",
+                    "emoji_search",
+                ],
+                "capabilities": {},
+                "abilities": {},
+                "availability": "public",
+                "status": None,
+                "speed": 3,
+                "intelligence": 3,
+                "context": 16,
             },
         ]
         return {"default_models": default_models, "models": models}
