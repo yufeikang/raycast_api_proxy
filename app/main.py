@@ -186,7 +186,7 @@ class OpenAIChatBot(ChatBotAbc):
             yield chunk.choices[0], None
 
     def get_models(self):
-        default_models = _get_default_model_dict("openai-gpt-3.5-turbo")
+        default_models = _get_default_model_dict("openai-gpt-4o")
         models = [
             {
                 "id": "openai-gpt-3.5-turbo",
@@ -196,6 +196,16 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
                 "context": 16,
+                **_get_model_extra_info(),
+            },
+            {
+                "id": "openai-gpt-4o",
+                "model": "gpt-4o",
+                "name": "GPT-4o",
+                "provider": "openai",
+                "provider_name": "OpenAI",
+                "provider_brand": "openai",
+                "context": 8,
                 **_get_model_extra_info(),
             },
             {

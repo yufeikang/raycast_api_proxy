@@ -13,7 +13,7 @@ It's a simple proxy that forwards requests from Raycast to the OpenAI API, conve
 
 | Provider | Model Name | Test Status | Environment Variables |
 | --- | --- | --- | --- |
-| `openai` | gpt-3.5-turbo,gpt-4-turbo | Tested | `OPENAI_API_KEY` |
+| `openai` | gpt-3.5-turbo,gpt-4-turbo,gpt-4o | Tested | `OPENAI_API_KEY` |
 | `azure openai` | - | Tested | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
 | `google` | gemini-pro,gemini-1.5-pro | Tested | `GOOGLE_API_KEY` |
 

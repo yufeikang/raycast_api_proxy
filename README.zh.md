@@ -13,7 +13,7 @@
 
 | 模型provider | 模型 | 测试状态 | 环境变量 |
 | --- | --- | --- | --- |
-| `openai` | gpt-3.5-turbo,gpt-4-turbo | 已测试 | `OPENAI_API_KEY` |
+| `openai` | gpt-3.5-turbo,gpt-4-turbo, gpt-4o | 已测试 | `OPENAI_API_KEY` |
 | `azure openai` | 同上 | 已测试 | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
 | `google` | gemini-pro,gemini-1.5-pro | 已测试 | `GOOGLE_API_KEY` |
 
