@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 logger = logging.getLogger("proxy")
 
-RAYCAST_BACKEND = "https://backend.raycast.com"
+RAYCAST_BACKEND = "https://d1w35p7klh9xkc.cloudfront.net"
 
 
 @dataclass
@@ -43,7 +43,7 @@ async def pass_through_request(client: httpx.AsyncClient, request: ProxyRequest)
     headers = request.headers
     # disable compression, in docker container, it will cause error, unknown reason
     headers["accept-encoding"] = "identity"
-    headers["host"] = RAYCAST_BACKEND.split("/")[2]
+    headers["host"] = "backend.raycast.com"
     try:
         response = await client.request(
             request.method,

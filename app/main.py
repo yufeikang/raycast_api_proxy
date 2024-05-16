@@ -4,12 +4,14 @@ import logging
 import os
 from pathlib import Path
 
+import asyncio
 import google.generativeai as genai
 import httpx
 import openai
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, WebSocket
 from fastapi.responses import StreamingResponse
 from google.generativeai import GenerativeModel
+import websockets
 
 from app.utils import ProxyRequest, pass_through_request
 
@@ -469,9 +471,33 @@ async def proxy_models(request: Request):
         headers=response.headers,
     )
 
+@app.websocket("/cable")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+
+    target_ws = await websockets.connect(uri='wss://d1w35p7klh9xkc.cloudfront.net/cable', extra_headers={"Host": "backend.raycast.com"})
+
+    async def forward(client, server):
+        # Forward messages from client to server
+        if isinstance(client, WebSocket):
+            async for message in client.iter_text():
+                if isinstance(client, websockets.WebSocketClientProtocol):
+                    logger.info(f"Received message from remove server: {message}")
+                    await server.send(message)
+        elif isinstance(client, websockets.WebSocketClientProtocol):
+            async for message in client:
+                if isinstance(client, WebSocket):
+                    logger.info(f"Received message from Raycast: {message}")
+                    await server.send_text(message)
+
+    # Run tasks for forwarding messages in both directions
+    await asyncio.gather(
+        forward(websocket, target_ws),
+        forward(target_ws, websocket)
+    )
 
 # pass through all other requests
-@app.api_route("/{path:path}")
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 async def proxy_options(request: Request, path: str):
     logger.info(f"Received request: {request.method} {path}")
     headers = {key: value for key, value in request.headers.items()}
