@@ -3,7 +3,7 @@
 This is a simple [Raycast AI](https://raycast.com/) API proxy. It allows you to use the [Raycast AI](https://raycast.com/ai) app without a subscription.
 It's a simple proxy that forwards requests from Raycast to the OpenAI API, converts the format, and returns the response in real-time.
 
-[English](README.md) | [中文](README.zh.md)
+[English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md)
 
 ## Introduction
 

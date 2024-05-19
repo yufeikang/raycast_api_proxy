@@ -1,5 +1,5 @@
 # build stage
-FROM python:3.9 AS builder
+FROM python:3.10 AS builder
 
 # install PDM
 RUN pip install -U pip setuptools wheel
@@ -13,7 +13,7 @@ WORKDIR /project
 RUN mkdir __pypackages__ && pdm install --prod --no-lock --no-editable
 
 # run stage
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 # retrieve packages from build stage
 ENV PYTHONPATH=/project/pkgs
