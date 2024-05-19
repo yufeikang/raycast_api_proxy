@@ -17,7 +17,7 @@ FROM python:3.10-slim
 
 # retrieve packages from build stage
 ENV PYTHONPATH=/project/pkgs
-COPY --from=builder /project/__pypackages__/3.9/lib /project/pkgs
+COPY --from=builder /project/__pypackages__/3.10/lib /project/pkgs
 COPY app /project/app
 COPY scripts/entrypoint.sh /
 
