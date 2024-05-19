@@ -1,8 +1,12 @@
+import json
+import os
 import logging
 from dataclasses import dataclass
 from typing import Any, Union
 
 import httpx
+import yaml
+import jsonpath_ng as jsonpath
 from fastapi import HTTPException
 
 logger = logging.getLogger("proxy")
@@ -24,6 +28,67 @@ class ProxyResponse:
     status_code: int
     content: bytes
     headers: dict
+
+
+def load_config(file_path: str) -> Union[dict, None]:
+    try:
+        with open(file_path, "r") as file:
+            logger.info(f"Loading config file: {file_path}")
+            return yaml.safe_load(file)
+    except FileNotFoundError:
+        logger.error("Config file not found at path: %s", file_path)
+        return None
+    except yaml.YAMLError as e:
+        logger.error("Error occurred while parsing config file")
+        return None
+    except Exception as e:
+        logger.error("Error occurred while loading config file")
+        return None
+
+
+def _get_mapping_key(url_path, method, type):
+    return f"{url_path}:{method}:{type}".lower().removeprefix(
+        "/"
+    )  # remove leading slash
+
+
+def init_mapping_config():
+    """
+    Initialize mapping config from custom_mapping.yml
+    return {
+        "sign_key": {
+            "json_path_expr": "value"
+        }
+    }
+    """
+    mapping_config = load_config(
+        os.environ.get("MAPPING_CONFIG_PATH", "custom_mapping.yml")
+    )
+    if mapping_config is None:
+        return
+
+    result = {}
+    for path, config in mapping_config.items():
+        for method, method_config in config.items():
+            json_path_exprs = {}
+            if method_config is None:
+                continue
+            # support response body only
+            response = method_config.get("response")
+            if response is None:
+                continue
+            body = response.get("body")
+            if body is None:
+                continue
+            key = _get_mapping_key(path, method, "response:body")
+            for json_path, value in body.items():
+                json_path_expr = jsonpath.parse(json_path)
+                json_path_exprs[json_path_expr] = value
+            result[key] = json_path_exprs
+    return result
+
+
+MAPPING_CONFIG = init_mapping_config()
 
 
 async def pass_through_request(client: httpx.AsyncClient, request: ProxyRequest):
@@ -77,6 +142,20 @@ async def pass_through_request(client: httpx.AsyncClient, request: ProxyRequest)
         for key, value in response.headers.items()
         if key not in filtered_headers
     }
+    # check and modify response content
+    if MAPPING_CONFIG:
+        json_content = json.loads(content)
+        path = request.url.split(RAYCAST_BACKEND)[1]
+        key = _get_mapping_key(path, request.method, "response:body")
+        if key in MAPPING_CONFIG:
+            for json_path_expr, value in MAPPING_CONFIG[key].items():
+                match = json_path_expr.find(json_content)
+                if match:
+                    for match_obj in match:
+                        logger.debug(f"Matched json path: {match_obj.value}")
+                        match_obj.context.value[match_obj.path.fields[-1]] = value
+        content = json.dumps(json_content, ensure_ascii=False).encode("utf-8")
+
     return ProxyResponse(
         status_code=response.status_code, content=content, headers=response_headers
     )

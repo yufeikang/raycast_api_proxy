@@ -1,0 +1,6 @@
+"api/v1/me/trial_status":
+  get:
+    response:
+      body:
+        # json path replace
+        "$.trial_limits.commands_limit": 30

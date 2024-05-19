@@ -19,7 +19,7 @@ app = FastAPI()
 
 logger = logging.getLogger("proxy")
 
-http_client = httpx.AsyncClient()
+http_client = httpx.AsyncClient(verify=False)
 
 USER_SESSION = {}  # bearer token -> user email
 ALLOWED_USERS = (

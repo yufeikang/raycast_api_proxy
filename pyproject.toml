@@ -12,8 +12,10 @@ dependencies = [
     "google-generativeai>=0.4.0",
     "httpx>=0.24.0",
     "uvicorn>=0.22.0",
+    "pyyaml>=6.0.1",
+    "jsonpath-ng>=1.6.1",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
 
@@ -35,4 +37,11 @@ skip_gitignore = true
 [tool.pdm.dev-dependencies]
 dev = [
     "black>=24.1.1",
+    "cryptography>=42.0.7",
+    "mitmproxy>=0.14.0",
 ]
+
+
+[tool.pdm.scripts]
+# generate cert by ./scripts/cert_gen.py
+cert_gen = "scripts/cert_gen.py  --domain backend.raycast.com --out ./cert"
