@@ -24,11 +24,11 @@ certificate. For more details on man-in-the-middle proxies, you can refer to (<h
 >
 > Multiple models can be used simultaneously by setting the corresponding environment variables.
 
-| Model Provider | Models | Test Status | Environment Variables |
-| --- | --- | --- | --- |
-| `openai` | gpt-3.5-turbo, gpt-4-turbo, gpt-4o | Tested | `OPENAI_API_KEY` |
-| `azure openai` | Same as above | Tested | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
-| `google` | gemini-pro, gemini-1.5-pro | Tested | `GOOGLE_API_KEY` |
+| Model Provider | Models | Test Status | Environment Variables | Image generation |
+| --- | --- | --- | --- | --- |
+| `openai` | gpt-3.5-turbo, gpt-4-turbo, gpt-4o | Tested | `OPENAI_API_KEY` | Supported |
+| `azure openai` | Same as above | Tested | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` | Supported |
+| `google` | gemini-pro, gemini-1.5-pro | Tested | `GOOGLE_API_KEY` | x |
 
 ### Ai chat
 
@@ -37,6 +37,10 @@ certificate. For more details on man-in-the-middle proxies, you can refer to (<h
 ### Translate
 
 ![translate](./assert/img/translate.jpg)
+
+### Image Generation
+
+Only OpenAI API supports image generation.
 
 ## Usage
 

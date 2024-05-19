@@ -143,19 +143,28 @@ async def pass_through_request(client: httpx.AsyncClient, request: ProxyRequest)
         if key not in filtered_headers
     }
     # check and modify response content
-    if MAPPING_CONFIG:
-        json_content = json.loads(content)
-        path = request.url.split(RAYCAST_BACKEND)[1]
-        key = _get_mapping_key(path, request.method, "response:body")
-        if key in MAPPING_CONFIG:
-            for json_path_expr, value in MAPPING_CONFIG[key].items():
-                match = json_path_expr.find(json_content)
-                if match:
-                    for match_obj in match:
-                        logger.debug(f"Matched json path: {match_obj.value}")
-                        match_obj.context.value[match_obj.path.fields[-1]] = value
-        content = json.dumps(json_content, ensure_ascii=False).encode("utf-8")
+    if MAPPING_CONFIG and content:
+        try:
+            json_content = json.loads(content)
+            path = url.removeprefix(RAYCAST_BACKEND)
+            key = _get_mapping_key(path, request.method, "response:body")
+            if key in MAPPING_CONFIG:
+                for json_path_expr, value in MAPPING_CONFIG[key].items():
+                    match = json_path_expr.find(json_content)
+                    if match:
+                        for match_obj in match:
+                            logger.debug(f"Matched json path: {match_obj.value}")
+                            match_obj.context.value[match_obj.path.fields[-1]] = value
+            content = json.dumps(json_content, ensure_ascii=False).encode("utf-8")
+        except Exception as e:
+            logger.error("Error occurred while modifying response content")
+            logger.error(e)
 
     return ProxyResponse(
         status_code=response.status_code, content=content, headers=response_headers
     )
+
+
+def json_dumps(*args, **kwargs):
+    kwargs.setdefault("ensure_ascii", False)
+    return json.dumps(*args, **kwargs)

@@ -22,11 +22,11 @@
 >
 > 多个模型可以同时使用，只需设置相应的环境变量即可
 
-| 模型provider | 模型 | 测试状态 | 环境变量 |
-| --- | --- | --- | --- |
-| `openai` | gpt-3.5-turbo,gpt-4-turbo, gpt-4o | 已测试 | `OPENAI_API_KEY` |
-| `azure openai` | 同上 | 已测试 | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
-| `google` | gemini-pro,gemini-1.5-pro | 已测试 | `GOOGLE_API_KEY` |
+| 模型provider | 模型 | 测试状态 | 环境变量 | 图片生成 |
+| --- | --- | --- | --- | --- |
+| `openai` | gpt-3.5-turbo,gpt-4-turbo, gpt-4o | 已测试 | `OPENAI_API_KEY` | 已支持 |
+| `azure openai` | 同上 | 已测试 | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` | 已支持 |
+| `google` | gemini-pro,gemini-1.5-pro | 已测试 | `GOOGLE_API_KEY` | x |
 
 ### Ai chat
 
@@ -35,6 +35,10 @@
 ### Translate
 
 ![translate](./assert/img/translate.jpg)
+
+### Image Generation
+
+只有OpenAI API支持图片生成。
 
 ## 使用方法
 

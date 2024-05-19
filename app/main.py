@@ -11,9 +11,10 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
 from google.generativeai import GenerativeModel
 
-from app.utils import ProxyRequest, pass_through_request
+from app.utils import ProxyRequest, pass_through_request, json_dumps
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
+
 
 app = FastAPI()
 
@@ -41,8 +42,23 @@ def _get_default_model_dict(model_name: str):
     }
 
 
-def _get_model_extra_info():
-    return {
+def _get_model_extra_info(name=""):
+    """
+    "capabilities": {
+          "web_search": "full" / "always_on"
+          "image_generation": "full"
+      },
+      "abilities": {
+          "web_search": {
+              "toggleable": true
+          },
+         "image_generation": {
+                "model": "dall-e-3"
+         },
+        "vision": {}
+      },
+    """
+    ext = {
         "description": "model description",
         "requires_better_ai": True,
         "features": ["chat", "quick_ai", "commands", "api", "emoji_search"],
@@ -54,6 +70,21 @@ def _get_model_extra_info():
         "speed": 3,
         "intelligence": 3,
     }
+    if "gpt-4" in name:
+        ext["capabilities"] = {
+            "web_search": "full",
+            "image_generation": "full",
+        }
+        ext["abilities"] = {
+            "web_search": {
+                "toggleable": True,
+            },
+            "image_generation": {
+                "model": "dall-e-3",
+            },
+            "vision": {},
+        }
+    return ext
 
 
 class ChatBotAbc(abc.ABC):
@@ -135,17 +166,88 @@ class OpenAIChatBot(ChatBotAbc):
     async def chat_completions(self, raycast_data: dict):
         openai_messages, temperature = self.__build_openai_messages(raycast_data)
         model = raycast_data["model"]
-        async for choice, error in self.__chat(openai_messages, model, temperature):
+        tools = []
+        if (
+            "image_generation_tool" in raycast_data
+            and raycast_data["image_generation_tool"]
+        ):
+            tools.append(self.__build_openai_function_img_tool(raycast_data))
+        async for i in self.__warp_chat(
+            openai_messages, model, temperature, tools=tools
+        ):
+            yield i
+
+    async def __warp_chat(self, messages, model, temperature, **kwargs):
+        async for choice, error in self.__chat(messages, model, temperature, **kwargs):
             if error:
                 error_message = (
                     error.body.get("message", {}) if error.body else error.message
                 )
-                yield f'data: {json.dumps({"text":error_message, "finish_reason":"error"})}\n\n'
+                yield f'data: {json_dumps({"text":error_message, "finish_reason":"error"})}\n\n'
                 return
-            if choice.finish_reason is not None:
-                yield f'data: {json.dumps({"text": "", "finish_reason": choice.finish_reason})}\n\n'
             if choice.delta and choice.delta.content:
-                yield f'data: {json.dumps({"text": choice.delta.content})}\n\n'
+                yield f'data: {json_dumps({"text": choice.delta.content})}\n\n'
+            if choice.delta.tool_calls:
+                has_valid_tool = False
+                messages.append(choice.delta)  # add the tool call to messages
+                for tool_call in choice.delta.tool_calls:
+                    tool_call_id = tool_call.id
+                    tool_function_name = tool_call.function.name
+                    logger.debug(f"Tool call: {tool_function_name}")
+                    if tool_function_name == "generate_image":
+                        if not tool_call.function.arguments:
+                            continue
+                        function_args = json.loads(tool_call.function.arguments)
+                        yield f"data: {json_dumps({'text': 'Generating image...'})}\n\n"
+                        fun_res = await self.__generate_image(**function_args)
+                        # add to messages
+                        has_valid_tool = True
+                        messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tool_call_id,
+                                "name": tool_function_name,
+                                "content": fun_res,
+                            }
+                        )
+                if has_valid_tool:
+                    async for i in self.__warp_chat(messages, model, temperature):
+                        yield i
+                    continue
+            if choice.finish_reason is not None:
+                yield f'data: {json_dumps({"text": "", "finish_reason": choice.finish_reason})}\n\n'
+
+    def __build_openai_function_img_tool(self, raycast_data: dict):
+        return {
+            "type": "function",
+            "function": {
+                "name": "generate_image",
+                "description": "Generate an image based on dall-e-3",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "description": "The prompt to generate the image for dall-e-3 model, e.g. 'a cat in the forest', please generate the prompt by usr input",
+                        }
+                    },
+                    "required": ["prompt"],
+                },
+            },
+        }
+
+    async def __generate_image(self, prompt, model="dall-e-3"):
+        try:
+            res = await self.openai_client.images.generate(
+                model=model,
+                prompt=prompt,
+                response_format="url",
+                # size="256x256",
+            )
+            return json.dumps({"url": res.data[0].url})
+        except openai.OpenAIError as e:
+            logger.error(f"OpenAI error: {e}")
+            return json.dumps({"error": str(e)})
 
     async def translate_completions(self, raycast_data: dict):
         messages = [
@@ -168,21 +270,32 @@ class OpenAIChatBot(ChatBotAbc):
             if choice.delta:
                 yield choice.delta.content
 
-    async def __chat(self, messages, model, temperature):
+    async def __chat(self, messages, model, temperature, **kwargs):
+        if "tools" in kwargs and not kwargs["tools"]:
+            # pop tools from kwargs, empty tools will cause error
+            kwargs.pop("tools")
+        stream = "tools" not in kwargs
         try:
-            stream = await self.openai_client.chat.completions.create(
+            logger.debug(f"openai chat stream: {stream}")
+            res = await self.openai_client.chat.completions.create(
                 model=model,
                 messages=messages,
                 max_tokens=MAX_TOKENS,
                 n=1,
                 temperature=temperature,
-                stream=True,
+                stream=stream,
+                **kwargs,
             )
         except openai.OpenAIError as e:
             logger.error(f"OpenAI error: {e}")
             yield None, e
             return
-        async for chunk in stream:
+        if not stream:
+            choice = res.choices[0]
+            choice.delta = res.choices[0].message
+            yield choice, None
+            return
+        async for chunk in res:
             yield chunk.choices[0], None
 
     def get_models(self):
@@ -196,7 +309,7 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
                 "context": 16,
-                **_get_model_extra_info(),
+                **_get_model_extra_info("gpt-3.5-turbo"),
             },
             {
                 "id": "openai-gpt-4o",
@@ -206,7 +319,7 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
                 "context": 8,
-                **_get_model_extra_info(),
+                **_get_model_extra_info("gpt-4o"),
             },
             {
                 "id": "openai-gpt-4-turbo",
@@ -216,7 +329,7 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
                 "context": 8,
-                **_get_model_extra_info(),
+                **_get_model_extra_info("gpt-4-turbo"),
             },
         ]
         return {"default_models": default_models, "models": models}
@@ -262,10 +375,10 @@ class GeminiChatBot(ChatBotAbc):
         try:
             for chunk in result:
                 logger.debug(f"Gemini chat_completions response chunk: {chunk.text}")
-                yield f'data: {json.dumps({"text": chunk.text})}\n\n'
+                yield f'data: {json_dumps({"text": chunk.text})}\n\n'
         except genai.types.BlockedPromptException as e:
             logger.debug(f"Gemini response finish: {e}")
-            yield f'data: {json.dumps({"text": "", "finish_reason": e})}\n\n'
+            yield f'data: {json_dumps({"text": "", "finish_reason": e})}\n\n'
 
     async def translate_completions(self, raycast_data: dict):
         model_name = raycast_data.get("model", "gemini-pro")
@@ -406,7 +519,7 @@ async def proxy_translations(request: Request):
     translated_text = "".join(result)
     res = {"data": {"translations": [{"translatedText": translated_text}]}}
     return Response(
-        status_code=200, content=json.dumps(res), media_type="application/json"
+        status_code=200, content=json_dumps(res), media_type="application/json"
     )
 
 
@@ -438,7 +551,7 @@ async def proxy(request: Request):
         data["can_upgrade_to_pro"] = False
         data["admin"] = True
         add_user(request, data["email"])
-        content = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        content = json_dumps(data, ensure_ascii=False).encode("utf-8")
     return Response(
         status_code=response.status_code,
         content=content,
@@ -462,7 +575,7 @@ async def proxy_models(request: Request):
     if response.status_code == 200:
         data = json.loads(content)
         data.update({"default_models": DEFAULT_MODELS, "models": MODELS_AVAILABLE})
-        content = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        content = json_dumps(data, ensure_ascii=False).encode("utf-8")
     return Response(
         status_code=response.status_code,
         content=content,
@@ -480,7 +593,7 @@ async def proxy_options(request: Request, path: str):
     if "https://" not in url:
         url = url.replace("http://", "https://")
     req = ProxyRequest(
-        str(request.url),
+        url,
         request.method,
         headers,
         await request.body(),
