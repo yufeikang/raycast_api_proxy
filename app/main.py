@@ -17,6 +17,7 @@ from app.utils import (
     json_dumps,
     process_custom_mapping,
 )
+from datetime import datetime
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
 
@@ -490,6 +491,13 @@ def check_auth(request: Request):
         return False
     return True
 
+def get_current_utc_time():
+    # 获取当前时间
+    current_time = datetime.utcnow()
+
+    # 转换为ISO 8601格式，末尾添加'Z'表示UTC时间
+    iso_format_time = current_time.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    return iso_format_time
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -550,6 +558,7 @@ async def proxy(request: Request):
         data["eligible_for_ai_citations"] = True
         data["eligible_for_developer_hub"] = True
         data["eligible_for_application_settings"] = True
+        data["eligible_for_cloud_sync"] = True
         data["publishing_bot"] = True
         data["has_pro_features"] = True
         data["has_better_ai"] = True
@@ -587,6 +596,114 @@ async def proxy_models(request: Request):
         content=content,
         headers=response.headers,
     )
+
+@app.api_route("/api/v1/me/sync", methods=["GET"])
+async def proxy_sync_get(request: Request, after: str = Query(None)):
+    bearer_token = request.headers.get("Authorization", "").split(" ")[1]
+    email = USER_SESSION[bearer_token]
+    try:
+        raycast_data = await request.json()
+        if not check_auth(request):
+            return Response(status_code=401)
+    except json.decoder.JSONDecodeError:
+        if bearer_token not in USER_SESSION:
+            logger.warn(f"User not in session: {bearer_token}")
+            return False
+        if email not in ALLOWED_USERS:
+            logger.debug(f"Allowed users: {ALLOWED_USERS}")
+            logger.warn(f"User not allowed: {email}")
+            return Response(status_code=401)
+
+
+
+    if not os.path.exists("./sync"):
+        os.makedirs("./sync")
+    if os.path.exists(f"./sync/{email}.json"):
+        with open(f"./sync/{email}.json", "r") as f:
+            data = json.loads(f.read())
+
+        # https://backend.raycast.com/api/v1/me/sync?after=2024-02-02T02:27:01.141195Z
+
+        if after:
+            after_time = datetime.fromisoformat(after.replace("Z", "+00:00"))
+            data["updated"] = [
+                item
+                for item in data["updated"]
+                if datetime.fromisoformat(item["updated_at"].replace("Z", "+00:00"))
+                > after_time
+            ]
+
+        return Response(json.dumps(data))
+    else:
+        return Response(json.dumps({"updated": [], "updated_at": None, "deleted": []}))
+
+
+@app.api_route("/api/v1/me/sync", methods=["PUT"])
+async def proxy_sync_put(request: Request):
+    global email
+    bearer_token = request.headers.get("Authorization", "").split(" ")[1]
+    email = USER_SESSION[bearer_token]
+    try:
+        raycast_data = await request.json()
+        if not check_auth(request):
+            return Response(status_code=401)
+    except json.decoder.JSONDecodeError:
+        if bearer_token not in USER_SESSION:
+            logger.warn(f"User not in session: {bearer_token}")
+            return False
+        if email not in ALLOWED_USERS:
+            logger.debug(f"Allowed users: {ALLOWED_USERS}")
+            logger.warn(f"User not allowed: {email}")
+            return Response(status_code=401)
+
+    # 检查是否存在 ./sync 目录
+    if not os.path.exists("./sync"):
+        os.makedirs("./sync")
+    data = await request.body()
+    if not os.path.exists(f"./sync/{email}.json"):
+        # 移除 request.body 中的 deleted 字段
+        data = json.loads(data)
+        data["deleted"] = []
+        updated_time = get_current_utc_time()
+        data["updated_at"] = updated_time
+        for item in data["updated"]:
+            item["created_at"] = item["client_updated_at"]
+            item["updated_at"] = updated_time
+        data = json.dumps(data)
+        with open(f"./sync/{email}.json", "w") as f:
+            f.write(data)
+
+    else:
+        with open(f"./sync/{email}.json", "r") as f:
+            old_data = json.loads(f.read())
+        new_data = json.loads(data)
+        # 查找 old_data["updated"] 字段中是否存在 id 与 new_data["deleted"] 字段的列表中的 id 相同的元素
+        # 如果存在则将该元素从 old_data["updated"] 中移除
+        cleaned_data_updated = [
+            item
+            for item in old_data["updated"]
+            if item["id"] not in new_data["deleted"]
+        ]
+
+        updated_time = get_current_utc_time()
+
+        for data in new_data["updated"]:
+            data["created_at"] = data["client_updated_at"]
+            data["updated_at"] = updated_time
+
+        # 添加 new_data["updated"] 中的元素到 cleaned_data_updated
+        cleaned_data_updated.extend(new_data["updated"])
+
+        new_data = {
+            "updated": cleaned_data_updated,
+            "updated_at": updated_time,
+            "deleted": [],
+        }
+
+        with open(f"./sync/{email}.json", "w") as f:
+            f.write(json.dumps(new_data))
+
+    return Response(json.dumps({"updated_at": updated_time}))
 
 
 # pass through all other requests
