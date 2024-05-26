@@ -590,7 +590,7 @@ async def proxy_models(request: Request):
 
 
 # pass through all other requests
-@app.api_route("/{path:path}")
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 async def proxy_options(request: Request, path: str):
     logger.info(f"Received request: {request.method} {path}")
     headers = {key: value for key, value in request.headers.items()}
