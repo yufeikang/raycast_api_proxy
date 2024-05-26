@@ -11,7 +11,12 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
 from google.generativeai import GenerativeModel
 
-from app.utils import ProxyRequest, pass_through_request, json_dumps
+from app.utils import (
+    ProxyRequest,
+    pass_through_request,
+    json_dumps,
+    process_custom_mapping,
+)
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
 
@@ -552,6 +557,7 @@ async def proxy(request: Request):
         data["admin"] = True
         add_user(request, data["email"])
         content = json_dumps(data, ensure_ascii=False).encode("utf-8")
+        content = process_custom_mapping(content, req)
     return Response(
         status_code=response.status_code,
         content=content,
