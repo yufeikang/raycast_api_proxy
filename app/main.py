@@ -2,7 +2,7 @@ import abc
 import json
 import logging
 import os
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 import google.generativeai as genai
@@ -503,7 +503,7 @@ def get_current_user_email(request: Request):
 
 def get_current_utc_time():
     # 获取当前UTC时间并转换为ISO 8601格式，末尾手动添加'Z'表示UTC时间
-    return datetime.now(UTC).isoformat(timespec="milliseconds") + "Z"
+    return datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
 
 
 @app.on_event("shutdown")
