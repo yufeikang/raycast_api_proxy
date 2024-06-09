@@ -216,3 +216,9 @@ correctly. For instance: `--dns 223.5.5.5`.
 2. DNS Not Taking Effect
 Sometimes on macOS, modifying the `/etc/hosts` file does not take effect immediately. There’s no known solution to this yet. Sometimes restarting Raycast helps, or modifying the
 `/etc/hosts` file again might work.
+
+### Roadmap
+
+- [ ] Support web search
+- [ ] Support more AI models
+- [ ] Improve project structure
