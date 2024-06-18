@@ -14,7 +14,6 @@ dependencies = [
     "uvicorn>=0.22.0",
     "pyyaml>=6.0.1",
     "jsonpath-ng>=1.6.1",
-    "uvicorn[standard]"
 ]
 requires-python = ">=3.10"
 readme = "README.md"
