@@ -27,6 +27,7 @@
 | `openai` | gpt-3.5-turbo,gpt-4-turbo, gpt-4o | 已测试 | `OPENAI_API_KEY` | 已支持 |
 | `azure openai` | 同上 | 已测试 | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` | 已支持 |
 | `google` | gemini-pro,gemini-1.5-pro | 已测试 | `GOOGLE_API_KEY` | x |
+| `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | 已测试 | `ANTHROPIC_API_KEY` | x |
 
 ### Ai chat
 

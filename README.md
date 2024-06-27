@@ -29,6 +29,7 @@ certificate. For more details on man-in-the-middle proxies, you can refer to (<h
 | `openai` | gpt-3.5-turbo, gpt-4-turbo, gpt-4o | Tested | `OPENAI_API_KEY` | Supported |
 | `azure openai` | Same as above | Tested | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` | Supported |
 | `google` | gemini-pro, gemini-1.5-pro | Tested | `GOOGLE_API_KEY` | x |
+| `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | Tested | `ANTHROPIC_API_KEY` | x |
 
 ### Ai chat
 

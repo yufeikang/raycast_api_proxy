@@ -30,6 +30,7 @@ epts-howmitmproxyworks/)をご参照ください。
 | `openai` | gpt-3.5-turbo,gpt-4-turbo, gpt-4o | テスト済み | `OPENAI_API_KEY` |
 | `azure openai` | 同上 | テスト済み | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
 | `google` | gemini-pro,gemini-1.5-pro | テスト済み | `GOOGLE_API_KEY` |
+| `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | テスト済み | `ANTHROPIC_API_KEY` | x |
 
 ### Ai チャット
 
