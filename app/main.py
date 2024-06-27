@@ -36,6 +36,9 @@ async def shutdown_event():
     await http_client.aclose()
 
 
+app.include_router(sync_router, prefix="/api/v1/me")
+
+
 @app.post("/api/v1/ai/chat_completions")
 async def chat_completions(request: Request):
     raycast_data = await request.json()
@@ -177,9 +180,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Run tasks for forwarding messages in both directions
     await asyncio.gather(forward(websocket, target_ws), forward(target_ws, websocket))
-
-
-app.include_router(sync_router, prefix="/api/v1/me")
 
 
 if __name__ == "__main__":
