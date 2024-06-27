@@ -1,15 +1,15 @@
 import json
-import os
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any, Union
 
 import httpx
-import yaml
 import jsonpath_ng as jsonpath
+import yaml
 from fastapi import HTTPException
 
-logger = logging.getLogger("proxy")
+logger = logging.getLogger(__name__)
 
 RAYCAST_BACKEND = "https://backend.raycast.com"
 
