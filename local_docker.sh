@@ -4,6 +4,7 @@ docker build -t raycast .
 docker run --rm -it \
     $([[ -n $OPENAI_API_KEY ]] && echo -n "-e OPENAI_API_KEY=$OPENAI_API_KEY") \
     $([[ -n $GOOGLE_API_KEY ]] && echo -n "-e GOOGLE_API_KEY=$GOOGLE_API_KEY") \
+    $([[ -n $ANTHROPIC_API_KEY ]] && echo -n "-e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY") \
     $([[ -f .env ]] && echo -n "--env-file .env") \
     -p 443:443 \
     --dns 1.1.1.1 \
