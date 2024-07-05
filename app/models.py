@@ -277,6 +277,10 @@ class OpenAIChatBot(ChatBotAbc):
             yield choice, None
             return
         async for chunk in res:
+            if not chunk.choices:
+                logger.error(f"OpenAI error: {chunk}")
+                yield None, None
+                return
             yield chunk.choices[0], None
 
     def get_models(self):

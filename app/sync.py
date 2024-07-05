@@ -27,10 +27,13 @@ async def get_sync_data(request: Request, after: str = Query(None)):
             data = json.loads(f.read())
         if after:
             after_time = datetime.fromisoformat(after.replace("Z", "+00:00"))
+            logger.info(f"Filtering data after {after_time}")
             data["updated"] = [
                 item
                 for item in data["updated"]
-                if datetime.fromisoformat(item["updated_at"].replace("Z", "+00:00"))
+                if datetime.fromisoformat(
+                    item["client_updated_at"].replace("Z", "+00:00")
+                )
                 > after_time
             ]
         return data
