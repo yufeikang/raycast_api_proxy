@@ -52,19 +52,106 @@ async def chat_completions(request: Request):
 
 @app.api_route("/api/v1/translations", methods=["POST"])
 async def proxy_translations(request: Request):
-    raycast_data = await request.json()
-    result = []
-    logger.debug(f"Received translation request: {raycast_data}")
-    model_name = raycast_data.get("model")
-    async for content in get_bot(model_name).translate_completions(
-        raycast_data=raycast_data
-    ):
-        result.append(content) if content else None
-    translated_text = "".join(result)
-    res = {"data": {"translations": [{"translatedText": translated_text}]}}
-    return Response(
-        status_code=200, content=json_dumps(res), media_type="application/json"
-    )
+    translation_model = os.environ.get("TRANSLATION_MODEL")
+    if translation_model == "deeplx":
+        text = raycast_data["q"]
+        target_lang = raycast_data["target"]
+
+        if "source" in raycast_data:
+            source_lang = raycast_data["source"]
+
+        # if you enable this. this means, it will translate chinese to english and english to chinese regardless of your source and dest language.
+        # from regex import findall
+        # if len(findall(r'\p{Han}+', text)) >= 1 and target_lang == 'zh':
+        #     raycast_data["target"] = "en"
+        #     target_lang = raycast_data["target"]
+        # try:
+        #     text.encode(encoding='utf-8').decode('ascii')
+        # except UnicodeDecodeError:
+        #     pass
+        # else:
+        #     if target_lang == 'en':
+        #         raycast_data["target"] = "zh"
+        #         target_lang = raycast_data["target"]
+
+
+        deeplx_base_url = os.environ.get("DEEPLX_BASE_URL")
+        deeplx_api_token = os.environ.get("DEEPLX_API_TOKEN")
+
+        if not deeplx_base_url:
+            return Response(
+                status_code=500,
+                content=json.dumps(
+                    {
+                        "error": {
+                            "message": "No DEEPLX_BASE_URL provided",
+                        }
+                    }
+                ),
+            )
+        text = text.replace('\n', '\n')
+        # if not deeplx_api_token:
+        #     deeplx_api_token = ""
+        # deeplHeader = {"Authorization": f"Bearer {deeplx_api_token}"}
+        body = {
+            "text": text,
+            "target_lang": target_lang,
+        }
+        if "source" in raycast_data:
+            body["source_lang"] = source_lang
+
+        try:
+            req = ProxyRequest(
+                deeplx_base_url, "POST", '', json.dumps(body), query_params={}
+    #             deeplx_base_url, "POST", headers, json.dumps(body), query_params={}
+            )
+            resp = await pass_through_request(http_client, req, nohttps=True, noheaders=True)
+            print('a')
+            resp = json.loads(resp.content.decode("utf-8"))
+            try:
+                # translated_text = resp["alternatives"][0]
+                translated_text = resp["data"]
+                # translated_text = translated_text.replace('\\n', '\n')
+                # print(translated_text)
+                res = {"data": {"translations": [{"translatedText": translated_text}]}}
+            except TypeError:
+                # res = {"error": {"message": "Failed to translate"}}
+                # res = {"data": {"translations": [{"translatedText": "Failed to translate"}]}}
+                logger.warn(f'Text failed to translate: {text}, DEBUG: {translated_text}')
+                res = {"data": {"translations": [{"translatedText": text}]}}
+
+            if "source" not in raycast_data:
+                res["data"]["translations"][0]["detectedSourceLanguage"] = resp[
+                    "source_lang"
+                ].lower()
+
+            return Response(status_code=200, content=json.dumps(res))
+        except Exception as e:
+            logger.error(f"DEEPLX error: {e}")
+            return Response(
+                status_code=500,
+                content=json.dumps(
+                    {
+                        "error": {
+                            "message": "Unknown error",
+                        }
+                    }
+                ),
+            )
+    else:
+        raycast_data = await request.json()
+        result = []
+        logger.debug(f"Received translation request: {raycast_data}")
+        model_name = raycast_data.get("model")
+        async for content in get_bot(model_name).translate_completions(
+            raycast_data=raycast_data
+        ):
+            result.append(content) if content else None
+        translated_text = "".join(result)
+        res = {"data": {"translations": [{"translatedText": translated_text}]}}
+        return Response(
+            status_code=200, content=json_dumps(res), media_type="application/json"
+        )
 
 
 @app.api_route("/api/v1/me", methods=["GET"])
