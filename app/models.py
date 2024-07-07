@@ -571,14 +571,14 @@ if GeminiChatBot.is_start_available():
     MODELS_AVAILABLE.extend(_models["models"])
     DEFAULT_MODELS = _models["default_models"]
     MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
-if OpenAIChatBot.is_start_available():
+elif OpenAIChatBot.is_start_available():
     logger.info("OpenAI API is available")
     _bot = OpenAIChatBot()
     _models = _bot.get_models()
     MODELS_AVAILABLE.extend(_models["models"])
     DEFAULT_MODELS.update(_models["default_models"])
     MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
-if AnthropicChatBot.is_start_available():
+elif AnthropicChatBot.is_start_available():
     logger.info("Anthropic API is available")
     _bot = AnthropicChatBot()
     _models = _bot.get_models()
