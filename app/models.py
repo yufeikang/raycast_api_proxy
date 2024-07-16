@@ -3,17 +3,19 @@ import json
 import logging
 import os
 
+import httpx
 import anthropic
 import google.generativeai as genai
 import openai
 from google.generativeai import GenerativeModel
 
-from app.utils import json_dumps
+from app.utils import json_dumps, pass_through_request, ProxyRequest
 
 logger = logging.getLogger(__name__)
 
 MAX_TOKENS = os.environ.get("MAX_TOKENS", 1024)
 
+http_client = httpx.AsyncClient(verify=False)
 
 class ChatBotAbc(abc.ABC):
 
@@ -560,10 +562,70 @@ class AnthropicChatBot(ChatBotAbc):
         ]
         return {"default_models": default_models, "models": models}
 
+class translationBot(ChatBotAbc):
+    @classmethod
+    def is_start_available(cls):
+        return os.environ.get("DEEPLX_BASE_URL"); os.environ.get("DEEPLX_API_TOKEN"); False
+
+    def translate_completions(self, raycast_data: dict):
+        return self._transDeeplx(raycast_data["q"], raycast_data.get("source"), raycast_data["target"])
+
+    async def _transDeeplx(self, text, source, target):
+        url = os.environ.get("DEEPLX_BASE_URL")
+        deeplx_base_url = os.environ.get("DEEPLX_BASE_URL")
+        deeplx_api_token = os.environ.get("DEEPLX_API_TOKEN")
+
+        text = text.replace('\n', '\n')
+        # if not deeplx_api_token:
+        #     deeplx_api_token = ""
+        # deeplHeader = {"Authorization": f"Bearer {deeplx_api_token}"}
+        body = {            "text": text,
+            "target_lang": target,
+        }
+        if source:
+            body["source_lang"] = source
+
+        try:
+            req = ProxyRequest(
+                deeplx_base_url, "POST", '', json.dumps(body), query_params={}
+    #             deeplx_base_url, "POST", headers, json.dumps(body), query_params={}
+            )
+            resp = await pass_through_request(http_client, req, nohttps=True, noheaders=True)
+            resp = json.loads(resp.content.decode("utf-8"))
+            try:
+                # translated_text = resp["alternatives"][0]
+                translated_text = resp["data"]
+                # translated_text = translated_text.replace('\\n', '\n')
+                # print(translated_text)
+                res = {"data": {"translations": [{"translatedText": translated_text}]}}
+            except TypeError:
+                # res = {"error": {"message": "Failed to translate"}}
+                # res = {"data": {"translations": [{"translatedText": "Failed to translate"}]}}
+                logger.warn(f'Text failed to translate: {text}, DEBUG: {translated_text}')
+                res = {"data": {"translations": [{"translatedText": text}]}}
+
+            if not source:
+                res["data"]["translations"][0]["detectedSourceLanguage"] = resp["source_lang"].lower()
+
+            return json.dumps(res)
+        except Exception as e:
+            logger.error(f"DEEPLX error: {e}")
+
+
+    async def chat_completions(self, raycast_data: dict):
+        messages = self.__build_messages(raycast_data)
+        model = raycast_data["model"]
+        temperature = os.environ.get("TEMPERATURE", 0.5)
+
 
 MODELS_DICT = {}
 MODELS_AVAILABLE = []
 DEFAULT_MODELS = {}
+
+MODELS_TRANS_DICT = {}
+MODELS_TRANS_AVAILABLE = []
+DEFAULT_TRANS_MODELS = {}
+
 if GeminiChatBot.is_start_available():
     logger.info("Google API is available")
     _bot = GeminiChatBot()
@@ -571,14 +633,14 @@ if GeminiChatBot.is_start_available():
     MODELS_AVAILABLE.extend(_models["models"])
     DEFAULT_MODELS = _models["default_models"]
     MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
-elif OpenAIChatBot.is_start_available():
+if OpenAIChatBot.is_start_available():
     logger.info("OpenAI API is available")
     _bot = OpenAIChatBot()
     _models = _bot.get_models()
     MODELS_AVAILABLE.extend(_models["models"])
     DEFAULT_MODELS.update(_models["default_models"])
     MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
-elif AnthropicChatBot.is_start_available():
+if AnthropicChatBot.is_start_available():
     logger.info("Anthropic API is available")
     _bot = AnthropicChatBot()
     _models = _bot.get_models()
@@ -586,8 +648,21 @@ elif AnthropicChatBot.is_start_available():
     DEFAULT_MODELS.update(_models["default_models"])
     MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
 
+if translationBot.is_start_available():
+    logger.info("DeepL API is available")
+    _bot = translationBot()
+    _models = _bot.get_models()
+    MODELS_TRANS_AVAILABLE.extend(_models["models"])
+    DEFAULT_TRANS_MODELS.update(_models["default_models"])
+    MODELS_TRANS_DICT.update({model["model"]: _bot for model in _models["models"]})
+
 
 def get_bot(model_id):
     if not model_id:
         return next(iter(MODELS_DICT.values()))
     return MODELS_DICT.get(model_id)
+
+def get_trans_bot(model_trans_id):
+    if not model_trans_id:
+        return next(iter(MODELS_DICT.values()))
+    return MODELS_TRANS_DICT.get(model_trans_id)
