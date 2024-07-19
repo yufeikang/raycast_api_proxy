@@ -31,6 +31,8 @@ async def get_user_info_by_token(headers: Headers):
         logger.info(f"Getting user info by token: {token}")
         headers = dict(headers)
         headers["accept-encoding"] = "identity"  # disable compression
+        # delete content-length
+        headers.pop("content-length", None)
         httpx_client = httpx.AsyncClient()
         response = await httpx_client.get(
             f"https://backend.raycast.com/api/v1/me",
