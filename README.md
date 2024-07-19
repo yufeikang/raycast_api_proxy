@@ -120,7 +120,7 @@ Simply modify the corresponding environment variables.
 ```sh
 docker run --name raycast \
     -e OPENAI_API_KEY=$OPENAI_API_KEY \
-    -e OPENAI_API_BASE=https://your-resource.openai.azure.com \
+    -e OPENAI_BASE_URL=https://your-resource.openai.azure.com \
     -e OPENAI_API_VERSION=2023-05-15 \
     -e OPENAI_API_TYPE=azure \
     -e AZURE_DEPLOYMENT_ID=your-deployment-id \
