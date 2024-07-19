@@ -208,6 +208,17 @@ ALLOWED_USERS="xx@example.com,yy@example.com"
 
 The email addresses are the Raycast user email addresses, separated by commas.
 
+#### 7. Use deepl(x) as Translation Service
+
+If you want to use deepl(x) as the translation service and not the default OPENAI, you can set the `DEEPL_API_KEY` environment variable.
+
+```env
+TRANSLATION_MODEL=deeplx
+DEEPLX_API_TOKEN=<your deeplx api key>
+DEEPLX_BASE_URL=<your deeplx hosted url>
+```
+
+
 ### Notes
 
 1. DNS Designation

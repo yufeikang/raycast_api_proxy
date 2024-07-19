@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request, Response, WebSocket
 from fastapi.responses import StreamingResponse
 
 from app.middleware import AuthMiddleware
-from app.models import DEFAULT_MODELS, MODELS_AVAILABLE, get_bot
+from app.models import DEFAULT_MODELS, MODELS_AVAILABLE, get_bot, get_trans_bot
 from app.sync import router as sync_router
 from app.utils import (
     ProxyRequest,
@@ -52,19 +52,23 @@ async def chat_completions(request: Request):
 
 @app.api_route("/api/v1/translations", methods=["POST"])
 async def proxy_translations(request: Request):
-    raycast_data = await request.json()
-    result = []
-    logger.debug(f"Received translation request: {raycast_data}")
-    model_name = raycast_data.get("model")
-    async for content in get_bot(model_name).translate_completions(
-        raycast_data=raycast_data
-    ):
-        result.append(content) if content else None
-    translated_text = "".join(result)
-    res = {"data": {"translations": [{"translatedText": translated_text}]}}
-    return Response(
-        status_code=200, content=json_dumps(res), media_type="application/json"
-    )
+    translation_model = os.environ.get("TRANSLATION_MODEL")
+    if translation_model == "deeplx":
+        return await get_trans_bot(translation_model).translate_completions(raycast_data)
+    else:
+        raycast_data = await request.json()
+        result = []
+        logger.debug(f"Received translation request: {raycast_data}")
+        model_name = raycast_data.get("model")
+        async for content in get_bot(model_name).translate_completions(
+            raycast_data=raycast_data
+        ):
+            result.append(content) if content else None
+        translated_text = "".join(result)
+        res = {"data": {"translations": [{"translatedText": translated_text}]}}
+        return Response(
+            status_code=200, content=json_dumps(res), media_type="application/json"
+        )
 
 
 @app.api_route("/api/v1/me", methods=["GET"])
