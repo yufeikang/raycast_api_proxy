@@ -13,6 +13,7 @@ from app.utils import json_dumps
 logger = logging.getLogger(__name__)
 
 MAX_TOKENS = os.environ.get("MAX_TOKENS", 1024)
+DEFAULT_MODEL = os.environ.get("DEFAULT_MODEL")
 
 
 class ChatBotAbc(abc.ABC):
@@ -574,30 +575,41 @@ class AnthropicChatBot(ChatBotAbc):
 MODELS_DICT = {}
 MODELS_AVAILABLE = []
 DEFAULT_MODELS = {}
+AVAILABLE_DEFAULT_MODELS = []
 if GeminiChatBot.is_start_available():
     logger.info("Google API is available")
     _bot = GeminiChatBot()
     _models = _bot.get_models()
     MODELS_AVAILABLE.extend(_models["models"])
-    DEFAULT_MODELS = _models["default_models"]
+    AVAILABLE_DEFAULT_MODELS.append(_models["default_models"])
     MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
 if OpenAIChatBot.is_start_available():
     logger.info("OpenAI API is available")
     _bot = OpenAIChatBot()
     _models = _bot.get_models()
     MODELS_AVAILABLE.extend(_models["models"])
-    DEFAULT_MODELS.update(_models["default_models"])
+    AVAILABLE_DEFAULT_MODELS.append(_models["default_models"])
     MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
 if AnthropicChatBot.is_start_available():
     logger.info("Anthropic API is available")
     _bot = AnthropicChatBot()
     _models = _bot.get_models()
     MODELS_AVAILABLE.extend(_models["models"])
-    DEFAULT_MODELS.update(_models["default_models"])
+    AVAILABLE_DEFAULT_MODELS.append(_models["default_models"])
     MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
+
+
+DEFAULT_MODELS = next(iter(AVAILABLE_DEFAULT_MODELS))
+if DEFAULT_MODEL and DEFAULT_MODEL in MODELS_DICT:
+    DEFAULT_MODELS = MODELS_DICT[DEFAULT_MODEL]
+    logger.info(f"Using default model: {DEFAULT_MODEL}")
 
 
 def get_bot(model_id):
     if not model_id:
         return next(iter(MODELS_DICT.values()))
+    logger.debug(f"Getting bot for model: {model_id}")
+    if model_id not in MODELS_DICT:
+        logger.error(f"Model not found: {model_id}")
+        return None
     return MODELS_DICT.get(model_id)

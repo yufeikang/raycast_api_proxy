@@ -14,4 +14,4 @@ docker run --rm -it \
     -e LOG_LEVEL=DEBUG \
     -e ALLOWED_USERS=$ALLOWED_USERS \
     -v $PWD/app:/project/app \
-    raycast --entrypoint sh /entrypoint.sh --reload
+    raycast --entrypoint "sh /entrypoint.sh --reload"
