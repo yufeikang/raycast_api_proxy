@@ -1,9 +1,10 @@
 # build stage
 FROM python:3.10 AS builder
 
-# install PDM
+# install PDM and six
 RUN pip install -U pip setuptools wheel
 RUN pip install pdm
+RUN pip install six
 
 # copy files
 COPY pyproject.toml pdm.lock README.md /project/
