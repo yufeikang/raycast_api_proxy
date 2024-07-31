@@ -14,6 +14,9 @@ COPY scripts /project/scripts
 WORKDIR /project
 RUN mkdir __pypackages__ && pdm install --prod --no-lock --no-editable
 
+# install cryptography for certificate generation
+RUN pdm add cryptography
+
 # generate self-signed certificates
 RUN python ./scripts/cert_gen.py --domain backend.raycast.com --out ./cert
 
