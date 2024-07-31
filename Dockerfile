@@ -1,10 +1,9 @@
 # build stage
 FROM python:3.10 AS builder
 
-# install PDM and six
+# install PDM
 RUN pip install -U pip setuptools wheel
 RUN pip install pdm
-RUN pip install six
 
 # copy files
 COPY pyproject.toml pdm.lock README.md /project/
@@ -14,11 +13,8 @@ COPY scripts /project/scripts
 WORKDIR /project
 RUN mkdir __pypackages__ && pdm install --prod --no-lock --no-editable
 
-# install cryptography for certificate generation
-RUN pdm add cryptography
-
 # generate self-signed certificates
-RUN python ./scripts/cert_gen.py --domain backend.raycast.com --out ./cert
+RUN pdm run cert_gen
 
 # run stage
 FROM python:3.10-slim
