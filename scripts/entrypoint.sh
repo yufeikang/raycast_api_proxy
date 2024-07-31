@@ -7,4 +7,4 @@ if [ ! -f /project/cert/backend.raycast.com.cert.pem ] || [ ! -f /project/cert/b
 fi
 
 echo "Running app"
-python -m uvicorn app.main:app --host 0.0.0.0 --port 443 --ssl-keyfile /project/cert/backend.raycast.com.key.pem --ssl-certfile /project/cert/backend.raycast.com.cert.pem
+python -m uvicorn app.main:app --host 0.0.0.0 --port 80
