@@ -14,8 +14,8 @@ WORKDIR /project
 COPY pdm.lock .
 RUN mkdir __pypackages__ && pdm install --prod --no-editable
 
-# Generate self-signed certificates
-RUN pdm run /project/scripts/cert_gen.py -d backend.raycast.com -o ./cert
+# Generate self-signed certificates in a temporary directory
+RUN mkdir /temp_cert && pdm run /project/scripts/cert_gen.py -d backend.raycast.com -o /temp_cert
 
 # run stage
 FROM python:3.11.9-slim
@@ -26,7 +26,8 @@ RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 # Retrieve packages from build stage
 ENV PYTHONPATH=/project/pkgs
 COPY --from=builder /project/__pypackages__/3.11/lib /project/pkgs
-COPY --from=builder /project/cert /project/cert
+RUN mkdir /temp_cert
+COPY --from=builder /temp_cert /temp_cert/cert
 COPY app /project/app
 COPY scripts/entrypoint.sh /
 
