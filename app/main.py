@@ -182,25 +182,31 @@ async def websocket_endpoint(websocket: WebSocket):
     await asyncio.gather(forward(websocket, target_ws), forward(target_ws, websocket))
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 if __name__ == "__main__":
     import uvicorn
 
     current_dir = Path(__file__).parent.parent
 
-    if os.environ.get("CERT_FILE") and os.environ.get("KEY_FILE"):
-        ssl_cert_path = Path(os.environ.get("CERT_FILE"))
-        ssl_key_path = Path(os.environ.get("KEY_FILE"))
-    elif (current_dir / "cert").exists():
-        ssl_cert_path = current_dir / "cert" / "backend.raycast.com.cert.pem"
-        ssl_key_path = current_dir / "cert" / "backend.raycast.com.key.pem"
-    else:
-        ssl_cert_path = None
-        ssl_key_path = None
+    # Print "ls -la" equivalent of the current directory
+    # if os.environ.get("CERT_FILE") and os.environ.get("KEY_FILE"):
+    #     ssl_cert_path = Path(os.environ.get("CERT_FILE"))
+    #     ssl_key_path = Path(os.environ.get("KEY_FILE"))
+    # elif (current_dir / "cert").exists():
+    #     ssl_cert_path = current_dir / "cert" / "backend.raycast.com.cert.pem"
+    #     ssl_key_path = current_dir / "cert" / "backend.raycast.com.key.pem"
+    # else:
+    ssl_cert_path = None
+    ssl_key_path = None
 
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=443,
+        port=80,
         ssl_certfile=ssl_cert_path,
         ssl_keyfile=ssl_key_path,
     )

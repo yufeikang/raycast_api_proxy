@@ -6,12 +6,10 @@ docker run --rm -it \
     $([[ -n $GOOGLE_API_KEY ]] && echo -n "-e GOOGLE_API_KEY=$GOOGLE_API_KEY") \
     $([[ -n $ANTHROPIC_API_KEY ]] && echo -n "-e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY") \
     $([[ -f .env ]] && echo -n "--env-file .env") \
-    -p 443:443 \
+    -p 4444:443 \
     --dns 1.1.1.1 \
-    -v $PWD/cert/:/data/cert \
-    -e CERT_FILE=/data/cert/backend.raycast.com.cert.pem \
-    -e CERT_KEY=/data/cert/backend.raycast.com.key.pem \
+    -v "$PWD"/cert/:/project/cert \
     -e LOG_LEVEL=DEBUG \
-    -e ALLOWED_USERS=$ALLOWED_USERS \
-    -v $PWD/app:/project/app \
-    raycast --entrypoint "sh /entrypoint.sh --reload"
+    -e ALLOWED_USERS="$ALLOWED_USERS" \
+    -v "$PWD"/app:/project/app \
+    raycast
