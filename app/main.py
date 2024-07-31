@@ -182,6 +182,11 @@ async def websocket_endpoint(websocket: WebSocket):
     await asyncio.gather(forward(websocket, target_ws), forward(target_ws, websocket))
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 if __name__ == "__main__":
     import uvicorn
 
