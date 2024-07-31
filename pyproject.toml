@@ -15,7 +15,8 @@ dependencies = [
     "jsonpath-ng>=1.6.1",
     "anthropic>=0.29.0",
     "cryptography>=42.0.7",
-    "mitmproxy>=0.14.0"
+    "mitmproxy>=0.14.0",
+    "websockets>=12.0",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
