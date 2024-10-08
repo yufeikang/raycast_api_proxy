@@ -13,7 +13,7 @@ from fastapi import File, UploadFile, Form
 import aiofiles
 import hashlib
 import base64
-
+import uuid
 
 from app.middleware import AuthMiddleware
 from app.models import DEFAULT_MODELS, MODELS_AVAILABLE, get_bot
@@ -140,88 +140,130 @@ async def proxy_models(request: Request):
     )
 
 
+# @app.post("/api/v1/ai/files")
+# async def upload_file(
+#     chat_id: str = Form(...),
+#     blob: str = Form(...),
+#     file: UploadFile = File(...)
+# ):
+#     # 将 blob JSON 字符串解析为字典
+#     blob_data = json.loads(blob)
+#     content_type = blob_data.get("content_type")
+#     filename = blob_data.get("filename")
+#     byte_size = blob_data.get("byte_size")
+#     checksum = blob_data.get("checksum")
+
+#     # 读取文件内容
+#     file_content = await file.read()
+
+#     # 验证校验和
+#     calculated_checksum = base64.b64encode(
+#         hashlib.md5(file_content).digest()
+#     ).decode('utf-8')
+
+#     if calculated_checksum != checksum:
+#         return Response(
+#             status_code=400,
+#             content="Checksum does not match",
+#         )
+
+#     # 设置 Imgur 请求头
+#     headers = {
+#         "Authorization": f"Client-ID {IMGUR_CLIENT_ID}"
+#     }
+
+#     # 准备请求数据
+#     data = {
+#         'type': 'file',
+#         'title': filename,
+#         'description': 'Uploaded via API'
+#     }
+
+#     files = {
+#         'image': (filename, file_content, content_type)
+#     }
+
+#     # 异步上传到 Imgur
+#     async with httpx.AsyncClient() as client:
+#         response = await client.post(
+#             "https://api.imgur.com/3/image",
+#             headers=headers,
+#             data=data,
+#             files=files
+#         )
+
+#     # 处理响应
+#     if response.status_code == 200:
+#         imgur_data = response.json()
+#         imgur_link = imgur_data['data']['link']
+
+#         # 构建响应数据
+#         response_data = {
+#             "data": {
+#                 "id": imgur_data['data']['id'],
+#                 "type": "file",
+#                 "attributes": {
+#                     "url": imgur_link,
+#                     "content_type": content_type,
+#                     "filename": filename,
+#                     "byte_size": byte_size,
+#                     "checksum": checksum,
+#                     "chat_id": chat_id,
+#                 }
+#             }
+#         }
+#         return Response(
+#             status_code=201,
+#             content=json.dumps(response_data),
+#             media_type="application/json"
+#         )
+#     else:
+#         return Response(
+#             status_code=response.status_code,
+#             content=f"Failed to upload image: {response.text}",
+#         )
+
 @app.post("/api/v1/ai/files")
-async def upload_file(
-    chat_id: str = Form(...),
-    blob: str = Form(...),
-    file: UploadFile = File(...)
-):
-    # 将 blob JSON 字符串解析为字典
-    blob_data = json.loads(blob)
+async def upload_file(request: Request):
+    data = await request.json()
+    chat_id = data.get("chat_id")
+    blob_data = data.get("blob", {})
+
+    if not chat_id or not blob_data:
+        return Response(
+            status_code=400,
+            content="Missing required fields",
+        )
+
     content_type = blob_data.get("content_type")
     filename = blob_data.get("filename")
     byte_size = blob_data.get("byte_size")
     checksum = blob_data.get("checksum")
 
-    # 读取文件内容
-    file_content = await file.read()
+    # 生成一个唯一的文件 ID，模拟上传成功
+    file_id = str(uuid.uuid4())
 
-    # 验证校验和
-    calculated_checksum = base64.b64encode(
-        hashlib.md5(file_content).digest()
-    ).decode('utf-8')
-
-    if calculated_checksum != checksum:
-        return Response(
-            status_code=400,
-            content="Checksum does not match",
-        )
-
-    # 设置 Imgur 请求头
-    headers = {
-        "Authorization": f"Client-ID {IMGUR_CLIENT_ID}"
-    }
-
-    # 准备请求数据
-    data = {
-        'type': 'file',
-        'title': filename,
-        'description': 'Uploaded via API'
-    }
-
-    files = {
-        'image': (filename, file_content, content_type)
-    }
-
-    # 异步上传到 Imgur
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "https://api.imgur.com/3/image",
-            headers=headers,
-            data=data,
-            files=files
-        )
-
-    # 处理响应
-    if response.status_code == 200:
-        imgur_data = response.json()
-        imgur_link = imgur_data['data']['link']
-
-        # 构建响应数据
-        response_data = {
-            "data": {
-                "id": imgur_data['data']['id'],
-                "type": "file",
-                "attributes": {
-                    "url": imgur_link,
-                    "content_type": content_type,
-                    "filename": filename,
-                    "byte_size": byte_size,
-                    "checksum": checksum,
-                    "chat_id": chat_id,
-                }
+    # 构建响应数据
+    response_data = {
+        "data": {
+            "id": file_id,
+            "type": "file",
+            "attributes": {
+                "url": f"https://example.com/uploads/{file_id}",
+                "content_type": content_type,
+                "filename": filename,
+                "byte_size": byte_size,
+                "checksum": checksum,
+                "chat_id": chat_id,
             }
         }
-        return Response(
-            status_code=201,
-            content=json.dumps(response_data),
-            media_type="application/json"
-        )
-    else:
-        return Response(
-            status_code=response.status_code,
-            content=f"Failed to upload image: {response.text}",
-        )
+    }
+
+    return Response(
+        status_code=201,
+        content=json.dumps(response_data),
+        media_type="application/json"
+    )
 
 # pass through all other requests
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
