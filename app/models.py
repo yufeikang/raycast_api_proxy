@@ -46,45 +46,134 @@ def _get_default_model_dict(model_name: str):
 
 
 def _get_model_extra_info(name=""):
-    """
-    "capabilities": {
-          "web_search": "full" / "always_on"
-          "image_generation": "full"
-      },
-      "abilities": {
-          "web_search": {
-              "toggleable": true
-          },
-         "image_generation": {
-                "model": "dall-e-3"
-         },
-      },
-    """
     ext = {
         "description": "model description",
         "requires_better_ai": True,
         "features": ["chat", "quick_ai", "commands", "api", "emoji_search"],
-        "suggestions": ["chat", "quick_ai", "commands", "api", "emoji_search"],
+        "suggestions": [],
         "capabilities": {},
         "abilities": {},
         "availability": "public",
-        "status": None,
+        "status": None,  
         "speed": 3,
         "intelligence": 3,
     }
-    if "gpt-4" in name:
+    if "gpt-3.5-turbo" == name:
+        ext["description"] = (
+            "GPT-3.5 Turbo is OpenAI’s fastest model, making it ideal for tasks that require quick "
+            "response times with basic language processing capabilities.\n"
+        )
+        ext["requires_better_ai"] = False
+        ext["speed"] = 2
+        ext["intelligence"] = 2
+        ext["availability"] = "deprecated"
         ext["capabilities"] = {
             "web_search": "full",
             "image_generation": "full",
         }
         ext["abilities"] = {
-            "web_search": {
-                "toggleable": True,
-            },
-            "image_generation": {
-                "model": "dall-e-3",
+            "web_search": {"toggleable": True},
+            "image_generation": {"model": "dall-e-3"},
+        }
+    elif "gpt-4-turbo" == name:
+        ext["description"] = (
+            "The latest GPT-4 Turbo model with vision capabilities. Vision requests can now use JSON mode and "
+            "function calling. Currently points to gpt-4-turbo-2024-04-09.\n"
+        )
+        ext["speed"] = 0
+        ext["intelligence"] = 4
+        ext["capabilities"] = {
+            "web_search": "full",
+            "image_generation": "full",
+        }
+        ext["abilities"] = {
+            "web_search": {"toggleable": True},
+            "image_generation": {"model": "dall-e-3"},
+            "vision": {
+                "formats": [
+                    "image/png",
+                    "image/jpeg",
+                    "image/webp",
+                    "image/gif",
+                ],
             },
         }
+    elif "gpt-4o" == name:
+        ext["description"] = (
+            "GPT-4o is the most advanced and fastest model from OpenAI, making it a great choice for "
+            "complex everyday problems and deeper conversations.\n"
+        )
+        ext["speed"] = 2
+        ext["intelligence"] = 5
+        ext["suggestions"] = ["chat"]
+        ext["capabilities"] = {
+            "web_search": "full",
+            "image_generation": "full",
+        }
+        ext["abilities"] = {
+            "web_search": {"toggleable": True},
+            "image_generation": {"model": "dall-e-3"},
+            "vision": {
+                "formats": [
+                    "image/png",
+                    "image/jpeg",
+                    "image/webp",
+                    "image/gif",
+                ],
+            },
+        }
+    elif "gpt-4o-mini" == name:
+        ext["description"] = (
+            "GPT-4o mini is a highly intelligent and fast model that is ideal for a variety of everyday tasks.\n"
+        )
+        ext["requires_better_ai"] = False
+        ext["speed"] = 2
+        ext["intelligence"] = 4
+        ext["suggestions"] = ["chat", "quick_ai", "commands"]
+        ext["capabilities"] = {
+            "web_search": "full",
+            "image_generation": "full",
+        }
+        ext["abilities"] = {
+            "web_search": {"toggleable": True},
+            "image_generation": {"model": "dall-e-3"},
+            "vision": {
+                "formats": [
+                    "image/png",
+                    "image/jpeg",
+                    "image/webp",
+                    "image/gif",
+                ],
+            },
+        }
+    elif "o1-preview" == name:
+        ext["description"] = (
+            "o1-preview is a reasoning model designed to solve hard problems across domains. "
+            "These models think before they answer, producing a long internal chain of thought before responding to the user.\n"
+        )
+        ext["speed"] = 1
+        ext["intelligence"] = 5
+        ext["capabilities"] = {}
+        ext["abilities"] = {}
+    elif "o1-mini" == name:
+        ext["description"] = (
+            "o1-mini is a faster and cheaper reasoning model particularly good at coding, math, and science. "
+            "These models think before they answer, producing a long internal chain of thought before responding to the user.\n"
+        )
+        ext["speed"] = 2
+        ext["intelligence"] = 4
+        ext["capabilities"] = {}
+        ext["abilities"] = {}
+    else:
+        if "gpt-4" in name:
+            ext["capabilities"] = {
+                "web_search": "full",
+                "image_generation": "full",
+            }
+            ext["abilities"] = {
+                "web_search": {"toggleable": True},
+                "image_generation": {"model": "dall-e-3"},
+            }
     return ext
 
 
@@ -314,17 +403,17 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
-                "context": 16,
+                "context": 16,  # 16,000 tokens
                 **_get_model_extra_info("gpt-3.5-turbo"),
             },
             {
                 "id": "openai-gpt-4o-mini",
                 "model": "gpt-4o-mini",
-                "name": "GPT-4o Mini",
+                "name": "GPT-4o mini",
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
-                "context": 16,
+                "context": 127,  # 127,000 tokens
                 **_get_model_extra_info("gpt-4o-mini"),
             },
             {
@@ -334,7 +423,7 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
-                "context": 8,
+                "context": 127,  # 127,000 tokens
                 **_get_model_extra_info("gpt-4o"),
             },
             {
@@ -344,12 +433,32 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
-                "context": 8,
+                "context": 127,  # 127,000 tokens
                 **_get_model_extra_info("gpt-4-turbo"),
+            },
+            # 添加 o1 系列模型
+            {
+                "id": "openai-o1-preview",
+                "model": "o1-preview",
+                "name": "o1-preview",
+                "provider": "openai",
+                "provider_name": "OpenAI",
+                "provider_brand": "openai",
+                "context": 127,  # 127,000 tokens
+                **_get_model_extra_info("o1-preview"),
+            },
+            {
+                "id": "openai-o1-mini",
+                "model": "o1-mini",
+                "name": "o1-mini",
+                "provider": "openai",
+                "provider_name": "OpenAI",
+                "provider_brand": "openai",
+                "context": 127,  # 127,000 tokens
+                **_get_model_extra_info("o1-mini"),
             },
         ]
         return {"default_models": default_models, "models": models}
-
 
 class GeminiChatBot(ChatBotAbc):
     def __init__(self) -> None:
