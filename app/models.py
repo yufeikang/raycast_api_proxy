@@ -8,7 +8,12 @@ import google.generativeai as genai
 import openai
 from google.generativeai import GenerativeModel
 
-from app.utils import json_dumps
+from app.utils import (
+    json_dumps,
+    get_file_info, 
+    generate_file_url,
+    logger,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +60,7 @@ def _get_model_extra_info(name=""):
         "capabilities": {},
         "abilities": {},
         "availability": "public",
-        "status": None, 
+        "status": None,
         "speed": 3,
         "intelligence": 3,
     }
@@ -71,14 +76,6 @@ def _get_model_extra_info(name=""):
             "speed": 2,
             "intelligence": 2,
             "availability": "deprecated",
-            "capabilities": {
-                "web_search": "full",
-                "image_generation": "full",
-            },
-            "abilities": {
-                "web_search": {"toggleable": True},
-                "image_generation": {"model": "dall-e-3"},
-            },
         },
         "gpt-4-turbo": {
             "description": (
@@ -111,7 +108,6 @@ def _get_model_extra_info(name=""):
             ),
             "speed": 2,
             "intelligence": 5,
-            "suggestions": ["chat"],
             "capabilities": {
                 "web_search": "full",
                 "image_generation": "full",
@@ -136,7 +132,6 @@ def _get_model_extra_info(name=""):
             "requires_better_ai": False,
             "speed": 2,
             "intelligence": 4,
-            "suggestions": ["chat", "quick_ai", "commands"],
             "capabilities": {
                 "web_search": "full",
                 "image_generation": "full",
@@ -161,8 +156,6 @@ def _get_model_extra_info(name=""):
             ),
             "speed": 1,
             "intelligence": 5,
-            "capabilities": {},
-            "abilities": {},
         },
         "o1-mini": {
             "description": (
@@ -171,8 +164,6 @@ def _get_model_extra_info(name=""):
             ),
             "speed": 2,
             "intelligence": 4,
-            "capabilities": {},
-            "abilities": {},
         },
     }
 
@@ -233,10 +224,42 @@ class OpenAIChatBot(ChatBotAbc):
                         "content": raycast_data["additional_system_instructions"],
                     }
                 )
+            # Initialize message content for the current message
+            message_content = []
+
+            # Handle text content
             if "text" in msg["content"]:
-                openai_messages.append(
-                    {"role": msg["author"], "content": msg["content"]["text"]}
+                message_content.append(
+                    {"type": "text", "text": msg["content"]["text"]}
                 )
+
+            # Handle attachments
+            if "attachments" in msg["content"]:
+                for attachment in msg["content"]["attachments"]:
+                    attachment_id = attachment.get("id")
+                    attachment_type = attachment.get("type")
+
+                    if attachment_type == "file" and attachment_id:
+                        # Get the file information using the attachment ID
+                        file_info = get_file_info(attachment_id)
+                        if file_info:
+                            # Generate the file URL
+                            file_url = generate_file_url(file_info['key'])
+                            # Append the image URL to the message content
+                            message_content.append({
+                                "type": "image_url",
+                                "image_url": {"url": file_url}
+                            })
+                        else:
+                            logger.error(f"File with id {attachment_id} not found.")
+
+            # If there's any content to send, add it to openai_messages
+            if message_content:
+                openai_messages.append({
+                    "role": msg["author"],
+                    "content": message_content
+                })
+            
             if "temperature" in msg["content"]:
                 temperature = msg["content"]["temperature"]
         return openai_messages, temperature

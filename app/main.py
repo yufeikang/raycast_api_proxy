@@ -9,10 +9,8 @@ import websockets
 from fastapi import FastAPI, Request, Response, WebSocket
 from fastapi.responses import StreamingResponse
 
-import boto3
-from botocore.client import Config
+
 import uuid
-import base64
 from datetime import datetime, timezone
 
 from app.middleware import AuthMiddleware
@@ -23,6 +21,11 @@ from app.utils import (
     json_dumps,
     pass_through_request,
     process_custom_mapping,
+    store_file_info,
+    generate_presigned_url,
+    CLOUDFLARE_R2_ACCOUNT_ID,
+    generate_file_url,
+    logger,
 )
 
 FORMAT = "%(asctime)-15s %(threadName)s %(filename)-15s:%(lineno)d %(levelname)-8s: %(message)s"
@@ -36,41 +39,6 @@ app.add_middleware(AuthMiddleware)
 
 http_client = httpx.AsyncClient(verify=False)
 
-# Cloudflare R2 配置
-CLOUDFLARE_R2_ACCESS_KEY_ID = os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID")
-CLOUDFLARE_R2_SECRET_ACCESS_KEY = os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY")
-CLOUDFLARE_R2_BUCKET_NAME = os.getenv("CLOUDFLARE_R2_BUCKET_NAME")
-CLOUDFLARE_R2_ACCOUNT_ID = os.getenv("CLOUDFLARE_R2_ACCOUNT_ID")
-CLOUDFLARE_R2_ENDPOINT = f"https://{CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-
-# 创建 S3 客户端用于与 Cloudflare R2 交互
-s3_client = boto3.client(
-    's3',
-    endpoint_url=CLOUDFLARE_R2_ENDPOINT,
-    aws_access_key_id=CLOUDFLARE_R2_ACCESS_KEY_ID,
-    aws_secret_access_key=CLOUDFLARE_R2_SECRET_ACCESS_KEY,
-    config=Config(signature_version='s3v4')
-)
-
-def generate_presigned_url(key, content_type, checksum):
-    try:
-        # 生成预签名 URL
-        params = {
-            'Bucket': CLOUDFLARE_R2_BUCKET_NAME,
-            'Key': key,
-            'ContentType': content_type,
-            'ContentMD5': checksum,
-        }
-        url = s3_client.generate_presigned_url(
-            ClientMethod='put_object',
-            Params=params,
-            ExpiresIn=300,
-            HttpMethod='PUT'
-        )
-        return url
-    except Exception as e:
-        print(f"Error generating presigned URL: {e}")
-        return None
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -192,20 +160,15 @@ async def upload_file(request: Request):
 
     # 生成必要的字段
     file_id = str(uuid.uuid4())
-    # 生成与官方响应类似的 key
-    key = uuid.uuid4().hex
+    key = uuid.uuid4().hex  # 生成与官方响应类似的 key
     service_name = "ai_production"
     created_at = datetime.now(timezone.utc).isoformat()
-
-    # 处理 Content-MD5
-    # 如果 checksum 是 Base64 编码的 MD5，则无需转换
-    content_md5 = checksum
 
     # 生成预签名的上传 URL
     presigned_url = generate_presigned_url(
         key=key,
         content_type=content_type,
-        checksum=content_md5
+        checksum=checksum
     )
 
     if not presigned_url:
@@ -218,7 +181,7 @@ async def upload_file(request: Request):
     content_disposition = f'inline; filename="{filename}"; filename*=UTF-8\'\'{filename}'
     headers = {
         "Content-Type": content_type,
-        "Content-MD5": content_md5,
+        "Content-MD5": checksum,
         "Content-Disposition": content_disposition
     }
 
@@ -240,6 +203,18 @@ async def upload_file(request: Request):
             "headers": headers
         }
     }
+
+    # 存储文件信息以供后续使用
+    file_info = {
+        'id': file_id,
+        'key': key,
+        'filename': filename,
+        'content_type': content_type,
+        'byte_size': byte_size,
+        'checksum': checksum,
+        'created_at': created_at,
+    }
+    store_file_info(file_id, file_info)
 
     return Response(
         status_code=200,
