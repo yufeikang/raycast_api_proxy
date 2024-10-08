@@ -72,15 +72,13 @@ def _get_model_extra_info(name=""):
                 "GPT-3.5 Turbo is OpenAI’s fastest model, making it ideal for tasks that require quick "
                 "response times with basic language processing capabilities.\n"
             ),
-            "requires_better_ai": False,
             "speed": 2,
             "intelligence": 2,
-            "availability": "deprecated",
         },
         "gpt-4-turbo": {
             "description": (
                 "The latest GPT-4 Turbo model with vision capabilities. Vision requests can now use JSON mode and "
-                "function calling. Currently points to gpt-4-turbo-2024-04-09.\n"
+                "function calling.\n"
             ),
             "speed": 0,
             "intelligence": 4,
@@ -439,7 +437,7 @@ class OpenAIChatBot(ChatBotAbc):
             {
                 "id": "openai-gpt-4o-mini",
                 "model": "gpt-4o-mini",
-                "name": "GPT-4o mini",
+                "name": "GPT-4o Mini",
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",

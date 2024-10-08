@@ -206,10 +206,13 @@ def get_file_info(file_id: str) -> Optional[dict]:
 
 def generate_file_url(key: str) -> str:
     """
-    生成 Cloudflare R2 中文件的公开访问 URL
+    使用公共域名生成文件的公开访问 URL
     """
-    base_url = f"https://{CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com/{CLOUDFLARE_R2_BUCKET_NAME}"
-    return f"{base_url}/{key}"
+    # 从环境变量中获取公共域名
+    PUBLIC_DOMAIN = os.getenv("PUBLIC_DOMAIN")  # 请确保在 .env 文件中设置该变量
+
+    # 构建文件 URL
+    return f"https://{PUBLIC_DOMAIN}/{key}"
 
 def store_file_info(file_id: str, file_info: dict):
     """

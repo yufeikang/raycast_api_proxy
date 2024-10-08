@@ -24,7 +24,6 @@ from app.utils import (
     store_file_info,
     generate_presigned_url,
     CLOUDFLARE_R2_ACCOUNT_ID,
-    generate_file_url,
     logger,
 )
 
