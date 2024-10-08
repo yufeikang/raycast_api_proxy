@@ -9,11 +9,11 @@ import websockets
 from fastapi import FastAPI, Request, Response, WebSocket
 from fastapi.responses import StreamingResponse
 
-from fastapi import File, UploadFile, Form
-import aiofiles
-import hashlib
-import base64
+import boto3
+from botocore.client import Config
 import uuid
+import base64
+from datetime import datetime, timezone
 
 from app.middleware import AuthMiddleware
 from app.models import DEFAULT_MODELS, MODELS_AVAILABLE, get_bot
@@ -36,7 +36,41 @@ app.add_middleware(AuthMiddleware)
 
 http_client = httpx.AsyncClient(verify=False)
 
-IMGUR_CLIENT_ID = os.environ.get('IMGUR_CLIENT_ID')
+# Cloudflare R2 配置
+CLOUDFLARE_R2_ACCESS_KEY_ID = os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID")
+CLOUDFLARE_R2_SECRET_ACCESS_KEY = os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY")
+CLOUDFLARE_R2_BUCKET_NAME = os.getenv("CLOUDFLARE_R2_BUCKET_NAME")
+CLOUDFLARE_R2_ACCOUNT_ID = os.getenv("CLOUDFLARE_R2_ACCOUNT_ID")
+CLOUDFLARE_R2_ENDPOINT = f"https://{CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+# 创建 S3 客户端用于与 Cloudflare R2 交互
+s3_client = boto3.client(
+    's3',
+    endpoint_url=CLOUDFLARE_R2_ENDPOINT,
+    aws_access_key_id=CLOUDFLARE_R2_ACCESS_KEY_ID,
+    aws_secret_access_key=CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+    config=Config(signature_version='s3v4')
+)
+
+def generate_presigned_url(key, content_type, checksum):
+    try:
+        # 生成预签名 URL
+        params = {
+            'Bucket': CLOUDFLARE_R2_BUCKET_NAME,
+            'Key': key,
+            'ContentType': content_type,
+            'ContentMD5': checksum,
+        }
+        url = s3_client.generate_presigned_url(
+            ClientMethod='put_object',
+            Params=params,
+            ExpiresIn=300,
+            HttpMethod='PUT'
+        )
+        return url
+    except Exception as e:
+        print(f"Error generating presigned URL: {e}")
+        return None
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -139,90 +173,6 @@ async def proxy_models(request: Request):
         headers=response.headers,
     )
 
-
-# @app.post("/api/v1/ai/files")
-# async def upload_file(
-#     chat_id: str = Form(...),
-#     blob: str = Form(...),
-#     file: UploadFile = File(...)
-# ):
-#     # 将 blob JSON 字符串解析为字典
-#     blob_data = json.loads(blob)
-#     content_type = blob_data.get("content_type")
-#     filename = blob_data.get("filename")
-#     byte_size = blob_data.get("byte_size")
-#     checksum = blob_data.get("checksum")
-
-#     # 读取文件内容
-#     file_content = await file.read()
-
-#     # 验证校验和
-#     calculated_checksum = base64.b64encode(
-#         hashlib.md5(file_content).digest()
-#     ).decode('utf-8')
-
-#     if calculated_checksum != checksum:
-#         return Response(
-#             status_code=400,
-#             content="Checksum does not match",
-#         )
-
-#     # 设置 Imgur 请求头
-#     headers = {
-#         "Authorization": f"Client-ID {IMGUR_CLIENT_ID}"
-#     }
-
-#     # 准备请求数据
-#     data = {
-#         'type': 'file',
-#         'title': filename,
-#         'description': 'Uploaded via API'
-#     }
-
-#     files = {
-#         'image': (filename, file_content, content_type)
-#     }
-
-#     # 异步上传到 Imgur
-#     async with httpx.AsyncClient() as client:
-#         response = await client.post(
-#             "https://api.imgur.com/3/image",
-#             headers=headers,
-#             data=data,
-#             files=files
-#         )
-
-#     # 处理响应
-#     if response.status_code == 200:
-#         imgur_data = response.json()
-#         imgur_link = imgur_data['data']['link']
-
-#         # 构建响应数据
-#         response_data = {
-#             "data": {
-#                 "id": imgur_data['data']['id'],
-#                 "type": "file",
-#                 "attributes": {
-#                     "url": imgur_link,
-#                     "content_type": content_type,
-#                     "filename": filename,
-#                     "byte_size": byte_size,
-#                     "checksum": checksum,
-#                     "chat_id": chat_id,
-#                 }
-#             }
-#         }
-#         return Response(
-#             status_code=201,
-#             content=json.dumps(response_data),
-#             media_type="application/json"
-#         )
-#     else:
-#         return Response(
-#             status_code=response.status_code,
-#             content=f"Failed to upload image: {response.text}",
-#         )
-
 @app.post("/api/v1/ai/files")
 async def upload_file(request: Request):
     data = await request.json()
@@ -235,32 +185,64 @@ async def upload_file(request: Request):
             content="Missing required fields",
         )
 
-    content_type = blob_data.get("content_type")
     filename = blob_data.get("filename")
+    content_type = blob_data.get("content_type")
     byte_size = blob_data.get("byte_size")
     checksum = blob_data.get("checksum")
 
-    # 生成一个唯一的文件 ID，模拟上传成功
+    # 生成必要的字段
     file_id = str(uuid.uuid4())
+    # 生成与官方响应类似的 key
+    key = uuid.uuid4().hex
+    service_name = "ai_production"
+    created_at = datetime.now(timezone.utc).isoformat()
+
+    # 处理 Content-MD5
+    # 如果 checksum 是 Base64 编码的 MD5，则无需转换
+    content_md5 = checksum
+
+    # 生成预签名的上传 URL
+    presigned_url = generate_presigned_url(
+        key=key,
+        content_type=content_type,
+        checksum=content_md5
+    )
+
+    if not presigned_url:
+        return Response(
+            status_code=500,
+            content="Failed to generate presigned URL",
+        )
+
+    # 准备上传所需的 headers
+    content_disposition = f'inline; filename="{filename}"; filename*=UTF-8\'\'{filename}'
+    headers = {
+        "Content-Type": content_type,
+        "Content-MD5": content_md5,
+        "Content-Disposition": content_disposition
+    }
 
     # 构建响应数据
     response_data = {
-        "data": {
-            "id": file_id,
-            "type": "file",
-            "attributes": {
-                "url": f"https://example.com/uploads/{file_id}",
-                "content_type": content_type,
-                "filename": filename,
-                "byte_size": byte_size,
-                "checksum": checksum,
-                "chat_id": chat_id,
-            }
+        "id": file_id,
+        "key": key,
+        "filename": filename,
+        "content_type": content_type,
+        "metadata": {},
+        "service_name": service_name,
+        "byte_size": byte_size,
+        "checksum": checksum,
+        "created_at": created_at,
+        "attachable_sgid": "",  # 如果需要，可以生成实际的值
+        "signed_id": "",        # 如果需要，可以生成实际的值
+        "direct_upload": {
+            "url": presigned_url,
+            "headers": headers
         }
     }
 
     return Response(
-        status_code=201,
+        status_code=200,
         content=json.dumps(response_data),
         media_type="application/json"
     )
