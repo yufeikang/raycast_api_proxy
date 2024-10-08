@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, Union
+from typing import Any, Union, Optional
 
 import httpx
 import jsonpath_ng as jsonpath
