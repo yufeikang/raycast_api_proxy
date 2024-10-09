@@ -8,11 +8,22 @@ import google.generativeai as genai
 import openai
 from google.generativeai import GenerativeModel
 
-from app.utils import json_dumps
+from app.utils import (
+    json_dumps,
+    get_file_info, 
+    generate_file_url,
+    logger,
+)
 
 logger = logging.getLogger(__name__)
 
-MAX_TOKENS = os.environ.get("MAX_TOKENS", 1024)
+# 尝试将环境变量转换为整数，如果失败则使用默认值 1024
+try:
+    MAX_TOKENS = int(os.environ.get("MAX_TOKENS", 1024))
+except ValueError:
+    MAX_TOKENS = 1024
+    logger.warning("环境变量 MAX_TOKENS 不是有效的整数，使用默认值 1024")
+    
 DEFAULT_MODEL = os.environ.get("DEFAULT_MODEL")
 
 
@@ -46,20 +57,7 @@ def _get_default_model_dict(model_name: str):
 
 
 def _get_model_extra_info(name=""):
-    """
-    "capabilities": {
-          "web_search": "full" / "always_on"
-          "image_generation": "full"
-      },
-      "abilities": {
-          "web_search": {
-              "toggleable": true
-          },
-         "image_generation": {
-                "model": "dall-e-3"
-         },
-      },
-    """
+    # 定义所有模型的默认属性
     ext = {
         "description": "model description",
         "requires_better_ai": True,
@@ -72,20 +70,113 @@ def _get_model_extra_info(name=""):
         "speed": 3,
         "intelligence": 3,
     }
-    if "gpt-4" in name:
-        ext["capabilities"] = {
-            "web_search": "full",
-            "image_generation": "full",
-        }
-        ext["abilities"] = {
-            "web_search": {
-                "toggleable": True,
+
+    # 定义各个模型的特定属性
+    model_info = {
+        "gpt-3.5-turbo": {
+            "description": (
+                "GPT-3.5 Turbo is OpenAI’s fastest model, making it ideal for tasks that require quick "
+                "response times with basic language processing capabilities.\n"
+            ),
+            "speed": 2,
+            "intelligence": 2,
+        },
+        "gpt-4-turbo": {
+            "description": (
+                "The latest GPT-4 Turbo model with vision capabilities. Vision requests can now use JSON mode and "
+                "function calling.\n"
+            ),
+            "speed": 0,
+            "intelligence": 4,
+            "capabilities": {
+                "web_search": "full",
+                "image_generation": "full",
             },
-            "image_generation": {
-                "model": "dall-e-3",
+            "abilities": {
+                "web_search": {"toggleable": True},
+                "image_generation": {"model": "dall-e-3"},
+                "vision": {
+                    "formats": [
+                        "image/png",
+                        "image/jpeg",
+                        "image/webp",
+                        "image/gif",
+                    ],
+                },
             },
-        }
+        },
+        "gpt-4o": {
+            "description": (
+                "GPT-4o is the most advanced and fastest model from OpenAI, making it a great choice for "
+                "complex everyday problems and deeper conversations.\n"
+            ),
+            "speed": 2,
+            "intelligence": 5,
+            "capabilities": {
+                "web_search": "full",
+                "image_generation": "full",
+            },
+            "abilities": {
+                "web_search": {"toggleable": True},
+                "image_generation": {"model": "dall-e-3"},
+                "vision": {
+                    "formats": [
+                        "image/png",
+                        "image/jpeg",
+                        "image/webp",
+                        "image/gif",
+                    ],
+                },
+            },
+        },
+        "gpt-4o-mini": {
+            "description": (
+                "GPT-4o mini is a highly intelligent and fast model that is ideal for a variety of everyday tasks.\n"
+            ),
+            "requires_better_ai": False,
+            "speed": 2,
+            "intelligence": 4,
+            "capabilities": {
+                "web_search": "full",
+                "image_generation": "full",
+            },
+            "abilities": {
+                "web_search": {"toggleable": True},
+                "image_generation": {"model": "dall-e-3"},
+                "vision": {
+                    "formats": [
+                        "image/png",
+                        "image/jpeg",
+                        "image/webp",
+                        "image/gif",
+                    ],
+                },
+            },
+        },
+        "o1-preview": {
+            "description": (
+                "o1-preview is a reasoning model designed to solve hard problems across domains. "
+                "These models think before they answer, producing a long internal chain of thought before responding to the user.\n"
+            ),
+            "speed": 1,
+            "intelligence": 5,
+        },
+        "o1-mini": {
+            "description": (
+                "o1-mini is a faster and cheaper reasoning model particularly good at coding, math, and science. "
+                "These models think before they answer, producing a long internal chain of thought before responding to the user.\n"
+            ),
+            "speed": 2,
+            "intelligence": 4,
+        },
+    }
+
+    # 更新默认属性，如果模型有特定属性
+    if name in model_info:
+        ext.update(model_info[name])
+
     return ext
+
 
 
 class OpenAIChatBot(ChatBotAbc):
@@ -137,10 +228,42 @@ class OpenAIChatBot(ChatBotAbc):
                         "content": raycast_data["additional_system_instructions"],
                     }
                 )
+            # Initialize message content for the current message
+            message_content = []
+
+            # Handle text content
             if "text" in msg["content"]:
-                openai_messages.append(
-                    {"role": msg["author"], "content": msg["content"]["text"]}
+                message_content.append(
+                    {"type": "text", "text": msg["content"]["text"]}
                 )
+
+            # Handle attachments
+            if "attachments" in msg["content"]:
+                for attachment in msg["content"]["attachments"]:
+                    attachment_id = attachment.get("id")
+                    attachment_type = attachment.get("type")
+
+                    if attachment_type == "file" and attachment_id:
+                        # Get the file information using the attachment ID
+                        file_info = get_file_info(attachment_id)
+                        if file_info:
+                            # Generate the file URL
+                            file_url = generate_file_url(file_info['key'])
+                            # Append the image URL to the message content
+                            message_content.append({
+                                "type": "image_url",
+                                "image_url": {"url": file_url}
+                            })
+                        else:
+                            logger.error(f"File with id {attachment_id} not found.")
+
+            # If there's any content to send, add it to openai_messages
+            if message_content:
+                openai_messages.append({
+                    "role": msg["author"],
+                    "content": message_content
+                })
+            
             if "temperature" in msg["content"]:
                 temperature = msg["content"]["temperature"]
         return openai_messages, temperature
@@ -314,7 +437,7 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
-                "context": 16,
+                "context": 16,  # 16,000 tokens
                 **_get_model_extra_info("gpt-3.5-turbo"),
             },
             {
@@ -324,7 +447,7 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
-                "context": 16,
+                "context": 127,  # 127,000 tokens
                 **_get_model_extra_info("gpt-4o-mini"),
             },
             {
@@ -334,7 +457,7 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
-                "context": 8,
+                "context": 127,  # 127,000 tokens
                 **_get_model_extra_info("gpt-4o"),
             },
             {
@@ -344,12 +467,32 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
-                "context": 8,
+                "context": 127,  # 127,000 tokens
                 **_get_model_extra_info("gpt-4-turbo"),
+            },
+            # 添加 o1 系列模型
+            {
+                "id": "openai-o1-preview",
+                "model": "o1-preview",
+                "name": "o1-preview",
+                "provider": "openai",
+                "provider_name": "OpenAI",
+                "provider_brand": "openai",
+                "context": 127,  # 127,000 tokens
+                **_get_model_extra_info("o1-preview"),
+            },
+            {
+                "id": "openai-o1-mini",
+                "model": "o1-mini",
+                "name": "o1-mini",
+                "provider": "openai",
+                "provider_name": "OpenAI",
+                "provider_brand": "openai",
+                "context": 127,  # 127,000 tokens
+                **_get_model_extra_info("o1-mini"),
             },
         ]
         return {"default_models": default_models, "models": models}
-
 
 class GeminiChatBot(ChatBotAbc):
     def __init__(self) -> None:

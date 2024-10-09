@@ -2,12 +2,16 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, Union
+from typing import Any, Union, Optional
 
 import httpx
 import jsonpath_ng as jsonpath
 import yaml
 from fastapi import HTTPException
+
+import boto3
+from botocore.client import Config
+import base64
 
 logger = logging.getLogger(__name__)
 
@@ -174,3 +178,66 @@ def process_custom_mapping(content: bytes, request: ProxyRequest):
 def json_dumps(*args, **kwargs):
     kwargs.setdefault("ensure_ascii", False)
     return json.dumps(*args, **kwargs)
+
+# 添加全局文件存储(后续也许可以使用数据库来替代存储？)
+file_storage = {}
+
+# Cloudflare R2 配置
+CLOUDFLARE_R2_ACCESS_KEY_ID = os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID")
+CLOUDFLARE_R2_SECRET_ACCESS_KEY = os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY")
+CLOUDFLARE_R2_BUCKET_NAME = os.getenv("CLOUDFLARE_R2_BUCKET_NAME")
+CLOUDFLARE_R2_ACCOUNT_ID = os.getenv("CLOUDFLARE_R2_ACCOUNT_ID")
+CLOUDFLARE_R2_ENDPOINT = f"https://{CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+# 创建 S3 客户端用于与 Cloudflare R2 交互
+s3_client = boto3.client(
+    's3',
+    endpoint_url=CLOUDFLARE_R2_ENDPOINT,
+    aws_access_key_id=CLOUDFLARE_R2_ACCESS_KEY_ID,
+    aws_secret_access_key=CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+    config=Config(signature_version='s3v4')
+)
+
+def get_file_info(file_id: str) -> Optional[dict]:
+    """
+    根据文件 ID 获取文件信息
+    """
+    return file_storage.get(file_id)
+
+def generate_file_url(key: str) -> str:
+    """
+    使用公共域名生成文件的公开访问 URL
+    """
+    # 从环境变量中获取公共域名
+    PUBLIC_DOMAIN = os.getenv("PUBLIC_DOMAIN")  # 请确保在 .env 文件中设置该变量
+
+    # 构建文件 URL
+    return f"https://{PUBLIC_DOMAIN}/{key}"
+
+def store_file_info(file_id: str, file_info: dict):
+    """
+    存储文件信息以供后续检索
+    """
+    file_storage[file_id] = file_info
+
+def generate_presigned_url(key: str, content_type: str, checksum: str) -> Optional[str]:
+    """
+    生成用于上传文件的预签名 URL
+    """
+    try:
+        params = {
+            'Bucket': CLOUDFLARE_R2_BUCKET_NAME,
+            'Key': key,
+            'ContentType': content_type,
+            'ContentMD5': checksum,
+        }
+        url = s3_client.generate_presigned_url(
+            ClientMethod='put_object',
+            Params=params,
+            ExpiresIn=300,
+            HttpMethod='PUT'
+        )
+        return url
+    except Exception as e:
+        logger.error(f"Error generating presigned URL: {e}")
+        return None
