@@ -17,7 +17,13 @@ from app.utils import (
 
 logger = logging.getLogger(__name__)
 
-MAX_TOKENS = os.environ.get("MAX_TOKENS", 1024)
+# 尝试将环境变量转换为整数，如果失败则使用默认值 1024
+try:
+    MAX_TOKENS = int(os.environ.get("MAX_TOKENS", 1024))
+except ValueError:
+    MAX_TOKENS = 1024
+    logger.warning("环境变量 MAX_TOKENS 不是有效的整数，使用默认值 1024")
+    
 DEFAULT_MODEL = os.environ.get("DEFAULT_MODEL")
 
 
