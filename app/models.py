@@ -282,7 +282,7 @@ class OpenAIChatBot(ChatBotAbc):
                 model=model,
                 messages=messages,
                 n=1,
-                temperature=temperature,
+                temperature=1 if model.startswith("o1") else temperature,
                 # stream=stream,
                 **kwargs,
             )
