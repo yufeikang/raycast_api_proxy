@@ -277,6 +277,10 @@ class OpenAIChatBot(ChatBotAbc):
         # stream = "tools" not in kwargs
         stream = "stream" in kwargs and kwargs["stream"]
         try:
+            for m in messages:
+                # check model is o1 replace role system to user
+                if model.startswith("o1") and m.get("role") == "system":
+                    m["role"] = "user"
             logger.debug(f"openai chat stream: {stream}")
             res = await self.openai_client.chat.completions.create(
                 model=model,
@@ -306,26 +310,6 @@ class OpenAIChatBot(ChatBotAbc):
         default_models = _get_default_model_dict("openai-gpt-4o-mini")
         models = [
             {
-                "id": "openai-o1-mini",
-                "model": "o1-mini",
-                "name": "o1 mini",
-                "provider": "openai",
-                "provider_name": "OpenAI",
-                "provider_brand": "openai",
-                "context": 16,
-                **_get_model_extra_info("o1-mini"),
-            },
-            {
-                "id": "openai-o1-preview",
-                "model": "o1-preview",
-                "name": "o1 Preview",
-                "provider": "openai",
-                "provider_name": "OpenAI",
-                "provider_brand": "openai",
-                "context": 16,
-                **_get_model_extra_info("o1-preview"),
-            },
-            {
                 "id": "openai-gpt-4o-mini",
                 "model": "gpt-4o-mini",
                 "name": "GPT-4o Mini",
@@ -344,6 +328,26 @@ class OpenAIChatBot(ChatBotAbc):
                 "provider_brand": "openai",
                 "context": 8,
                 **_get_model_extra_info("gpt-4o"),
+            },
+            {
+                "id": "openai-o1-mini",
+                "model": "o1-mini",
+                "name": "o1 mini",
+                "provider": "openai",
+                "provider_name": "OpenAI",
+                "provider_brand": "openai",
+                "context": 16,
+                **_get_model_extra_info("o1-mini"),
+            },
+            {
+                "id": "openai-o1-preview",
+                "model": "o1-preview",
+                "name": "o1 Preview",
+                "provider": "openai",
+                "provider_name": "OpenAI",
+                "provider_brand": "openai",
+                "context": 16,
+                **_get_model_extra_info("o1-preview"),
             },
             {
                 "id": "openai-gpt-4-turbo",
