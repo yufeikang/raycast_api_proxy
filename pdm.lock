@@ -3,9 +3,12 @@
 
 [metadata]
 groups = ["default", "dev"]
-strategy = ["cross_platform"]
-lock_version = "4.4.2"
+strategy = []
+lock_version = "4.5.0"
 content_hash = "sha256:f5dfd1743812dea4c63f92424352dc423efc7f219d5bf407240db9db7e373228"
+
+[[metadata.targets]]
+requires_python = ">=3.10"
 
 [[package]]
 name = "aioquic"
@@ -52,6 +55,7 @@ requires_python = ">=3.7"
 summary = "The official Python library for the anthropic API"
 dependencies = [
     "anyio<5,>=3.5.0",
+    "cached-property; python_version < \"3.8\"",
     "distro<2,>=1.7.0",
     "httpx<1,>=0.23.0",
     "jiter<1,>=0.4.0",
@@ -71,8 +75,11 @@ version = "3.6.2"
 requires_python = ">=3.6.2"
 summary = "High level compatibility layer for multiple asynchronous event loop implementations"
 dependencies = [
+    "contextvars; python_version < \"3.7\"",
+    "dataclasses; python_version < \"3.7\"",
     "idna>=2.8",
     "sniffio>=1.1",
+    "typing-extensions; python_version < \"3.8\"",
 ]
 files = [
     {file = "anyio-3.6.2-py3-none-any.whl", hash = "sha256:fbbe32bd270d2a2ef3ed1c5d45041250284e31fc0a4df4a5a6071842051a51e3"},
@@ -97,6 +104,9 @@ name = "attrs"
 version = "23.2.0"
 requires_python = ">=3.7"
 summary = "Classes Without Boilerplate"
+dependencies = [
+    "importlib-metadata; python_version < \"3.8\"",
+]
 files = [
     {file = "attrs-23.2.0-py3-none-any.whl", hash = "sha256:99b87a485a5820b23b879f04c2305b44b951b502fd64be915879d77a7e8fc6f1"},
     {file = "attrs-23.2.0.tar.gz", hash = "sha256:935dc3b529c262f6cf76e50877d35a4bd3c1de194fd41f47a2b7ae8f19971f30"},
@@ -343,6 +353,7 @@ requires_python = ">=3.7"
 summary = "Composable command line interface toolkit"
 dependencies = [
     "colorama; platform_system == \"Windows\"",
+    "importlib-metadata; python_version < \"3.8\"",
 ]
 files = [
     {file = "click-8.1.3-py3-none-any.whl", hash = "sha256:bb4d8133cb15a609f44e8213d9b391b0809795062913b383c62be0ee95b1db48"},
@@ -446,6 +457,7 @@ dependencies = [
     "Werkzeug>=3.0.0",
     "blinker>=1.6.2",
     "click>=8.1.3",
+    "importlib-metadata>=3.6.0; python_version < \"3.10\"",
     "itsdangerous>=2.1.2",
 ]
 files = [
@@ -623,6 +635,9 @@ name = "h11"
 version = "0.14.0"
 requires_python = ">=3.7"
 summary = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
+dependencies = [
+    "typing-extensions; python_version < \"3.8\"",
+]
 files = [
     {file = "h11-0.14.0-py3-none-any.whl", hash = "sha256:e3fe4ac4b851c468cc8363d500db52c2ead036020723024a109d37346efaa761"},
     {file = "h11-0.14.0.tar.gz", hash = "sha256:8f19fbbe99e72420ff35c00b27a34cb9937e902a8b810e2c88300c6f0a3b699d"},
@@ -838,6 +853,9 @@ name = "kaitaistruct"
 version = "0.10"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
 summary = "Kaitai Struct declarative parser generator for binary data: runtime library for Python"
+dependencies = [
+    "enum34; python_version < \"3.4\"",
+]
 files = [
     {file = "kaitaistruct-0.10-py2.py3-none-any.whl", hash = "sha256:a97350919adbf37fda881f75e9365e2fb88d04832b7a4e57106ec70119efb235"},
     {file = "kaitaistruct-0.10.tar.gz", hash = "sha256:a044dee29173d6afbacf27bcac39daf89b654dd418cfa009ab82d9178a9ae52a"},
@@ -1021,21 +1039,22 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.11.1"
-requires_python = ">=3.7.1"
+version = "1.56.1"
+requires_python = ">=3.8"
 summary = "The official Python library for the openai API"
 dependencies = [
     "anyio<5,>=3.5.0",
     "distro<2,>=1.7.0",
     "httpx<1,>=0.23.0",
+    "jiter<1,>=0.4.0",
     "pydantic<3,>=1.9.0",
     "sniffio",
     "tqdm>4",
-    "typing-extensions<5,>=4.7",
+    "typing-extensions<5,>=4.11",
 ]
 files = [
-    {file = "openai-1.11.1-py3-none-any.whl", hash = "sha256:e0f388ce499f53f58079d0c1f571f356f2b168b84d0d24a412506b6abc714980"},
-    {file = "openai-1.11.1.tar.gz", hash = "sha256:f66b8fe431af43e09594147ef3cdcb79758285de72ebafd52be9700a2af41e99"},
+    {file = "openai-1.56.1-py3-none-any.whl", hash = "sha256:38e61183c2a98fedebbbb04a909a052d9f897358b070483fc0caff17300a227c"},
+    {file = "openai-1.56.1.tar.gz", hash = "sha256:8b0449f22a0c318441eae8a8a789753c3b2cac86542be51ca45df788e26aa180"},
 ]
 
 [[package]]
@@ -1196,6 +1215,10 @@ files = [
 name = "pydivert"
 version = "2.1.0"
 summary = "Python binding to windivert driver"
+dependencies = [
+    "enum34>=1.1.6; python_version == \"2.7\" or python_version == \"3.3\"",
+    "win-inet-pton>=1.0.1; python_version == \"2.7\" or python_version == \"3.3\"",
+]
 files = [
     {file = "pydivert-2.1.0-py2.py3-none-any.whl", hash = "sha256:382db488e3c37c03ec9ec94e061a0b24334d78dbaeebb7d4e4d32ce4355d9da1"},
     {file = "pydivert-2.1.0.tar.gz", hash = "sha256:f0e150f4ff591b78e35f514e319561dadff7f24a82186a171dd4d465483de5b4"},
@@ -1425,6 +1448,7 @@ requires_python = ">=3.7"
 summary = "The little ASGI library that shines."
 dependencies = [
     "anyio<5,>=3.4.0",
+    "typing-extensions>=3.10.0; python_version < \"3.10\"",
 ]
 files = [
     {file = "starlette-0.26.1-py3-none-any.whl", hash = "sha256:e87fce5d7cbdde34b76f0ac69013fd9d190d581d80681493016666e6f96c6d5e"},
@@ -1550,12 +1574,12 @@ files = [
 
 [[package]]
 name = "typing-extensions"
-version = "4.9.0"
+version = "4.12.2"
 requires_python = ">=3.8"
 summary = "Backported and Experimental Type Hints for Python 3.8+"
 files = [
-    {file = "typing_extensions-4.9.0-py3-none-any.whl", hash = "sha256:af72aea155e91adfc61c3ae9e0e342dbc0cba726d6cba4b6c72c1f34e47291cd"},
-    {file = "typing_extensions-4.9.0.tar.gz", hash = "sha256:23478f88c37f27d76ac8aee6c905017a143b0b1b886c3c9f66bc2fd94f9f5783"},
+    {file = "typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"},
+    {file = "typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"},
 ]
 
 [[package]]

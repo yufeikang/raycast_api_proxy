@@ -12,7 +12,6 @@ from app.utils import json_dumps
 
 logger = logging.getLogger(__name__)
 
-MAX_TOKENS = os.environ.get("MAX_TOKENS", 1024)
 DEFAULT_MODEL = os.environ.get("DEFAULT_MODEL")
 
 
@@ -282,7 +281,6 @@ class OpenAIChatBot(ChatBotAbc):
             res = await self.openai_client.chat.completions.create(
                 model=model,
                 messages=messages,
-                max_tokens=MAX_TOKENS,
                 n=1,
                 temperature=temperature,
                 # stream=stream,
@@ -433,7 +431,6 @@ class GeminiChatBot(ChatBotAbc):
             stream=stream,
             generation_config=genai.types.GenerationConfig(
                 candidate_count=1,
-                max_output_tokens=MAX_TOKENS,
                 temperature=temperature,
             ),
         )
@@ -486,7 +483,6 @@ class AnthropicChatBot(ChatBotAbc):
             response = await self.anthropic_client.messages.create(
                 model=model,
                 messages=messages,
-                max_tokens=MAX_TOKENS,
                 temperature=temperature,
                 stream=True,
             )
@@ -534,7 +530,6 @@ class AnthropicChatBot(ChatBotAbc):
             response = await self.anthropic_client.messages.create(
                 model=model,
                 messages=messages,
-                max_tokens=MAX_TOKENS,
                 temperature=0.8,
                 stream=True,
             )
