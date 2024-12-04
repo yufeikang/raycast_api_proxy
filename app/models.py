@@ -308,14 +308,24 @@ class OpenAIChatBot(ChatBotAbc):
         default_models = _get_default_model_dict("openai-gpt-4o-mini")
         models = [
             {
-                "id": "openai-gpt-3.5-turbo",
-                "model": "gpt-3.5-turbo",
-                "name": "GPT-3.5 Turbo",
+                "id": "openai-o1-mini",
+                "model": "o1-mini",
+                "name": "o1 mini",
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
                 "context": 16,
-                **_get_model_extra_info("gpt-3.5-turbo"),
+                **_get_model_extra_info("o1-mini"),
+            },
+            {
+                "id": "openai-o1-preview",
+                "model": "o1-preview",
+                "name": "o1 Preview",
+                "provider": "openai",
+                "provider_name": "OpenAI",
+                "provider_brand": "openai",
+                "context": 16,
+                **_get_model_extra_info("o1-preview"),
             },
             {
                 "id": "openai-gpt-4o-mini",
@@ -340,7 +350,7 @@ class OpenAIChatBot(ChatBotAbc):
             {
                 "id": "openai-gpt-4-turbo",
                 "model": "gpt-4-turbo",
-                "name": "GPT-4 Turbo",
+                "name": "GPT-4 Turbo (Legacy)",
                 "provider": "openai",
                 "provider_name": "OpenAI",
                 "provider_brand": "openai",
