@@ -26,10 +26,22 @@ certificate. For more details on man-in-the-middle proxies, you can refer to (<h
 
 | Model Provider | Models | Test Status | Environment Variables | Image generation |
 | --- | --- | --- | --- | --- |
-| `openai` | gpt-3.5-turbo, gpt-4-turbo, gpt-4o | Tested | `OPENAI_API_KEY` | Supported |
+| `openai` | **from api** | Tested | `OPENAI_API_KEY` | Supported |
 | `azure openai` | Same as above | Tested | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` | Supported |
 | `google` | gemini-pro, gemini-1.5-pro | Tested | `GOOGLE_API_KEY` | x |
 | `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | Tested | `ANTHROPIC_API_KEY` | x |
+
+#### support openai api compatible providers
+
+##### Example for [Ollama](https://ollama.com/)
+
+add environment variables
+
+- `OPENAI_PROVIDER=ollama`
+- `OPENAI_BASE_URL=http://localhost:11434/v1`
+- `OPENAI_API_KEY=ollama` # required, but unused
+
+models will be fetched from `http://localhost:11434/v1/models`
 
 ### Ai chat
 

@@ -2,6 +2,7 @@ import abc
 import json
 import logging
 import os
+from functools import cache
 
 import anthropic
 import google.generativeai as genai
@@ -30,7 +31,7 @@ class ChatBotAbc(abc.ABC):
     async def translate_completions(self, raycast_data: dict):
         pass
 
-    def get_models(self):
+    async def get_models(self):
         pass
 
 
@@ -57,7 +58,14 @@ def _get_model_extra_info(name=""):
          "image_generation": {
                 "model": "dall-e-3"
          },
+        "system_message": {
+            "supported": true
+        },
+        "temperature": {
+            "supported": true
+        }
       },
+
     """
     ext = {
         "description": "model description",
@@ -83,6 +91,22 @@ def _get_model_extra_info(name=""):
             "image_generation": {
                 "model": "dall-e-3",
             },
+            "system_message": {
+                "supported": True,
+            },
+            "temperature": {
+                "supported": True,
+            },
+        }
+    # o1 models don't support system_message and temperature
+    if "o1" in name:
+        ext["abilities"] = {
+            "system_message": {
+                "supported": False,
+            },
+            "temperature": {
+                "supported": False,
+            },
         }
     return ext
 
@@ -97,6 +121,9 @@ class OpenAIChatBot(ChatBotAbc):
 
     def __init__(self) -> None:
         super().__init__()
+        self.provider = os.environ.get(
+            "OPENAI_PROVIDER", "openai"
+        )  # for openai api compatible provider
         openai.api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get(
             "AZURE_OPENAI_API_KEY"
         )
@@ -306,60 +333,36 @@ class OpenAIChatBot(ChatBotAbc):
                 return
             yield chunk.choices[0], None
 
-    def get_models(self):
+    @cache
+    async def get_models(self):
         default_models = _get_default_model_dict("openai-gpt-4o-mini")
-        models = [
-            {
-                "id": "openai-gpt-4o-mini",
-                "model": "gpt-4o-mini",
-                "name": "GPT-4o Mini",
-                "provider": "openai",
-                "provider_name": "OpenAI",
-                "provider_brand": "openai",
-                "context": 16,
-                **_get_model_extra_info("gpt-4o-mini"),
-            },
-            {
-                "id": "openai-gpt-4o",
-                "model": "gpt-4o",
-                "name": "GPT-4o",
-                "provider": "openai",
-                "provider_name": "OpenAI",
-                "provider_brand": "openai",
-                "context": 8,
-                **_get_model_extra_info("gpt-4o"),
-            },
-            {
-                "id": "openai-o1-mini",
-                "model": "o1-mini",
-                "name": "o1 mini",
-                "provider": "openai",
-                "provider_name": "OpenAI",
-                "provider_brand": "openai",
-                "context": 16,
-                **_get_model_extra_info("o1-mini"),
-            },
-            {
-                "id": "openai-o1-preview",
-                "model": "o1-preview",
-                "name": "o1 Preview",
-                "provider": "openai",
-                "provider_name": "OpenAI",
-                "provider_brand": "openai",
-                "context": 16,
-                **_get_model_extra_info("o1-preview"),
-            },
-            {
-                "id": "openai-gpt-4-turbo",
-                "model": "gpt-4-turbo",
-                "name": "GPT-4 Turbo (Legacy)",
-                "provider": "openai",
-                "provider_name": "OpenAI",
-                "provider_brand": "openai",
-                "context": 8,
-                **_get_model_extra_info("gpt-4-turbo"),
-            },
-        ]
+        """
+        {
+            "id": "gpt-4o",
+            "created": 1715367049,
+            "object": "model",
+            "owned_by": "system"
+        }
+        """
+        openai_models = (await self.openai_client.models.list()).data
+        models = []
+        for model in openai_models:
+            if not model.id.startswith("gpt-4") and not model.id.startswith("o1"):
+                # skip other models
+                continue
+            model_id = f"{self.provider}-{model.id}"
+            models.append(
+                {
+                    "id": model_id,
+                    "model": model.id,
+                    "name": f"{self.provider} {model.id}",
+                    "provider": "openai",
+                    "provider_name": self.provider,
+                    "provider_brand": self.provider,
+                    "context": 16,
+                    **_get_model_extra_info(model.id),
+                }
+            )
         return {"default_models": default_models, "models": models}
 
 
@@ -439,7 +442,7 @@ class GeminiChatBot(ChatBotAbc):
             ),
         )
 
-    def get_models(self):
+    async def get_models(self):
         default_models = _get_default_model_dict("gemini-pro")
         models = [
             {
@@ -544,7 +547,7 @@ class AnthropicChatBot(ChatBotAbc):
             logger.error(f"Anthropic translation error: {e}")
             yield f"Error: {str(e)}"
 
-    def get_models(self):
+    async def get_models(self):
         default_models = _get_default_model_dict("claude-3-5-sonnet-20240620")
         models = [
             {
@@ -585,33 +588,36 @@ MODELS_DICT = {}
 MODELS_AVAILABLE = []
 DEFAULT_MODELS = {}
 AVAILABLE_DEFAULT_MODELS = []
-if GeminiChatBot.is_start_available():
-    logger.info("Google API is available")
-    _bot = GeminiChatBot()
-    _models = _bot.get_models()
-    MODELS_AVAILABLE.extend(_models["models"])
-    AVAILABLE_DEFAULT_MODELS.append(_models["default_models"])
-    MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
-if OpenAIChatBot.is_start_available():
-    logger.info("OpenAI API is available")
-    _bot = OpenAIChatBot()
-    _models = _bot.get_models()
-    MODELS_AVAILABLE.extend(_models["models"])
-    AVAILABLE_DEFAULT_MODELS.append(_models["default_models"])
-    MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
-if AnthropicChatBot.is_start_available():
-    logger.info("Anthropic API is available")
-    _bot = AnthropicChatBot()
-    _models = _bot.get_models()
-    MODELS_AVAILABLE.extend(_models["models"])
-    AVAILABLE_DEFAULT_MODELS.append(_models["default_models"])
-    MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
 
 
-DEFAULT_MODELS = next(iter(AVAILABLE_DEFAULT_MODELS))
-if DEFAULT_MODEL and DEFAULT_MODEL in MODELS_DICT:
-    DEFAULT_MODELS = MODELS_DICT[DEFAULT_MODEL]
-    logger.info(f"Using default model: {DEFAULT_MODEL}")
+async def init_models():
+    global MODELS_DICT, MODELS_AVAILABLE, DEFAULT_MODELS, AVAILABLE_DEFAULT_MODELS
+    if GeminiChatBot.is_start_available():
+        logger.info("Google API is available")
+        _bot = GeminiChatBot()
+        _models = await _bot.get_models()
+        MODELS_AVAILABLE.extend(_models["models"])
+        AVAILABLE_DEFAULT_MODELS.append(_models["default_models"])
+        MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
+    if OpenAIChatBot.is_start_available():
+        logger.info("OpenAI API is available")
+        _bot = OpenAIChatBot()
+        _models = await _bot.get_models()
+        MODELS_AVAILABLE.extend(_models["models"])
+        AVAILABLE_DEFAULT_MODELS.append(_models["default_models"])
+        MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
+    if AnthropicChatBot.is_start_available():
+        logger.info("Anthropic API is available")
+        _bot = AnthropicChatBot()
+        _models = await _bot.get_models()
+        MODELS_AVAILABLE.extend(_models["models"])
+        AVAILABLE_DEFAULT_MODELS.append(_models["default_models"])
+        MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
+
+    DEFAULT_MODELS = next(iter(AVAILABLE_DEFAULT_MODELS))
+    if DEFAULT_MODEL and DEFAULT_MODEL in MODELS_DICT:
+        DEFAULT_MODELS = MODELS_DICT[DEFAULT_MODEL]
+        logger.info(f"Using default model: {DEFAULT_MODEL}")
 
 
 def get_bot(model_id):

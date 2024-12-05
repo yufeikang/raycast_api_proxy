@@ -24,10 +24,22 @@
 
 | 模型provider | 模型 | 测试状态 | 环境变量 | 图片生成 |
 | --- | --- | --- | --- | --- |
-| `openai` | gpt-3.5-turbo,gpt-4-turbo, gpt-4o | 已测试 | `OPENAI_API_KEY` | 已支持 |
+| `openai` | **from api** | 已测试 | `OPENAI_API_KEY` | 已支持 |
 | `azure openai` | 同上 | 已测试 | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` | 已支持 |
 | `google` | gemini-pro,gemini-1.5-pro | 已测试 | `GOOGLE_API_KEY` | x |
 | `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | 已测试 | `ANTHROPIC_API_KEY` | x |
+
+#### 支持openai api兼容的provider
+
+##### [Ollama](https://ollama.com/) 示例
+
+添加环境变量
+
+- `OPENAI_PROVIDER=ollama`
+- `OPENAI_BASE_URL=http://localhost:11434/v1`
+- `OPENAI_API_KEY=ollama` # required, but unused
+
+模型将从`http://localhost:11434/v1/models`获取
 
 ### Ai chat
 

@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request, Response, WebSocket
 from fastapi.responses import StreamingResponse
 
 from app.middleware import AuthMiddleware
-from app.models import DEFAULT_MODELS, MODELS_AVAILABLE, get_bot
+from app.models import DEFAULT_MODELS, MODELS_AVAILABLE, get_bot, init_models
 from app.sync import router as sync_router
 from app.utils import (
     ProxyRequest,
@@ -34,6 +34,11 @@ http_client = httpx.AsyncClient(verify=False)
 @app.on_event("shutdown")
 async def shutdown_event():
     await http_client.aclose()
+
+
+@app.on_event("startup")
+async def on_startup():
+    await init_models()
 
 
 app.include_router(sync_router, prefix="/api/v1/me")

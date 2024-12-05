@@ -27,10 +27,22 @@ epts-howmitmproxyworks/)をご参照ください。
 
 | モデルプロバイダー | モデル | テスト状況 | 環境変数 |
 | --- | --- | --- | --- |
-| `openai` | gpt-3.5-turbo,gpt-4-turbo, gpt-4o | テスト済み | `OPENAI_API_KEY` |
+| `openai` | from API | テスト済み | `OPENAI_API_KEY` |
 | `azure openai` | 同上 | テスト済み | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
 | `google` | gemini-pro,gemini-1.5-pro | テスト済み | `GOOGLE_API_KEY` |
 | `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | テスト済み | `ANTHROPIC_API_KEY` | x |
+
+#### サポートされている OpenAI API 互換プロバイダー
+
+##### [Ollama](https://ollama.com/) の例
+
+環境変数を追加
+
+- `OPENAI_PROVIDER=ollama`
+- `OPENAI_BASE_URL=http://localhost:11434/v1`
+- `OPENAI_API_KEY=ollama` # 必須ですが、使用されません
+
+モデルは `http://localhost:11434/v1/models` から取得されます。
 
 ### Ai チャット
 
