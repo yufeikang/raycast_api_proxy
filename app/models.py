@@ -442,30 +442,35 @@ class GeminiChatBot(ChatBotAbc):
             ),
         )
 
+    def __remove_model_name_prefix(self, model_name):
+        return model_name.replace("models/", "")
+
     async def get_models(self):
-        default_models = _get_default_model_dict("gemini-pro")
+        genai_models = genai.list_models()
+        # filter gemini models
+        genai_models = [
+            model
+            for model in genai_models
+            if model.name.endswith("latest") or model.name.endswith("exp")
+        ]
+        default_models = _get_default_model_dict(
+            self.__remove_model_name_prefix(genai_models[0].name)
+        )
+
         models = [
             {
-                "id": "gemini-pro",
-                "model": "gemini-pro",
-                "name": "Gemini Pro",
+                "id": self.__remove_model_name_prefix(model.name),
+                "model": self.__remove_model_name_prefix(model.name),
+                "name": model.display_name,
                 "provider": "google",
                 "provider_name": "Google",
                 "provider_brand": "google",
                 "context": 16,
-                **_get_model_extra_info(),
-            },
-            {
-                "id": "gemini-1.5-pro",
-                "model": "gemini-1.5-pro-latest",
-                "name": "Gemini 1.5 Pro",
-                "provider": "google",
-                "provider_name": "Google",
-                "provider_brand": "google",
-                "context": 16,
-                **_get_model_extra_info(),
-            },
+                **_get_model_extra_info(self.__remove_model_name_prefix(model.name)),
+            }
+            for model in genai_models
         ]
+
         return {"default_models": default_models, "models": models}
 
 

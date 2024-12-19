@@ -477,17 +477,18 @@ files = [
 
 [[package]]
 name = "google-ai-generativelanguage"
-version = "0.4.0"
+version = "0.6.10"
 requires_python = ">=3.7"
 summary = "Google Ai Generativelanguage API client library"
 dependencies = [
-    "google-api-core[grpc]!=2.0.*,!=2.1.*,!=2.10.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,!=2.9.*,<3.0.0dev,>=1.34.0",
+    "google-api-core[grpc]!=2.0.*,!=2.1.*,!=2.10.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,!=2.9.*,<3.0.0dev,>=1.34.1",
+    "google-auth!=2.24.0,!=2.25.0,<3.0.0dev,>=2.14.1",
     "proto-plus<2.0.0dev,>=1.22.3",
-    "protobuf!=3.20.0,!=3.20.1,!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<5.0.0dev,>=3.19.5",
+    "protobuf!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<6.0.0dev,>=3.20.2",
 ]
 files = [
-    {file = "google-ai-generativelanguage-0.4.0.tar.gz", hash = "sha256:c8199066c08f74c4e91290778329bb9f357ba1ea5d6f82de2bc0d10552bf4f8c"},
-    {file = "google_ai_generativelanguage-0.4.0-py3-none-any.whl", hash = "sha256:e4c425376c1ee26c78acbc49a24f735f90ebfa81bf1a06495fae509a2433232c"},
+    {file = "google_ai_generativelanguage-0.6.10-py3-none-any.whl", hash = "sha256:854a2bf833d18be05ad5ef13c755567b66a4f4a870f099b62c61fe11bddabcf4"},
+    {file = "google_ai_generativelanguage-0.6.10.tar.gz", hash = "sha256:6fa642c964d8728006fe7e8771026fc0b599ae0ebeaf83caf550941e8e693455"},
 ]
 
 [[package]]
@@ -525,6 +526,23 @@ files = [
 ]
 
 [[package]]
+name = "google-api-python-client"
+version = "2.156.0"
+requires_python = ">=3.7"
+summary = "Google API Client Library for Python"
+dependencies = [
+    "google-api-core!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.0,<3.0.0.dev0,>=1.31.5",
+    "google-auth!=2.24.0,!=2.25.0,<3.0.0.dev0,>=1.32.0",
+    "google-auth-httplib2<1.0.0,>=0.2.0",
+    "httplib2<1.dev0,>=0.19.0",
+    "uritemplate<5,>=3.0.1",
+]
+files = [
+    {file = "google_api_python_client-2.156.0-py2.py3-none-any.whl", hash = "sha256:6352185c505e1f311f11b0b96c1b636dcb0fec82cd04b80ac5a671ac4dcab339"},
+    {file = "google_api_python_client-2.156.0.tar.gz", hash = "sha256:b809c111ded61716a9c1c7936e6899053f13bae3defcdfda904bd2ca68065b9c"},
+]
+
+[[package]]
 name = "google-auth"
 version = "2.25.2"
 requires_python = ">=3.7"
@@ -540,13 +558,27 @@ files = [
 ]
 
 [[package]]
+name = "google-auth-httplib2"
+version = "0.2.0"
+summary = "Google Authentication Library: httplib2 transport"
+dependencies = [
+    "google-auth",
+    "httplib2>=0.19.0",
+]
+files = [
+    {file = "google-auth-httplib2-0.2.0.tar.gz", hash = "sha256:38aa7badf48f974f1eb9861794e9c0cb2a0511a4ec0679b1f886d108f5640e05"},
+    {file = "google_auth_httplib2-0.2.0-py2.py3-none-any.whl", hash = "sha256:b65a0a2123300dd71281a7bf6e64d65a0759287df52729bdd1ae2e47dc311a3d"},
+]
+
+[[package]]
 name = "google-generativeai"
-version = "0.4.0"
+version = "0.8.3"
 requires_python = ">=3.9"
 summary = "Google Generative AI High level API client library and tools."
 dependencies = [
-    "google-ai-generativelanguage==0.4.0",
+    "google-ai-generativelanguage==0.6.10",
     "google-api-core",
+    "google-api-python-client",
     "google-auth>=2.15.0",
     "protobuf",
     "pydantic",
@@ -554,7 +586,7 @@ dependencies = [
     "typing-extensions",
 ]
 files = [
-    {file = "google_generativeai-0.4.0-py3-none-any.whl", hash = "sha256:cf53a51f7c22f0193685e39708e015119b2500626bb2e74ad8c2bf8d8568ef1e"},
+    {file = "google_generativeai-0.8.3-py3-none-any.whl", hash = "sha256:1108ff89d5b8e59f51e63d1a8bf84701cd84656e17ca28d73aeed745e736d9b7"},
 ]
 
 [[package]]
@@ -681,6 +713,20 @@ dependencies = [
 files = [
     {file = "httpcore-0.17.0-py3-none-any.whl", hash = "sha256:0fdfea45e94f0c9fd96eab9286077f9ff788dd186635ae61b312693e4d943599"},
     {file = "httpcore-0.17.0.tar.gz", hash = "sha256:cc045a3241afbf60ce056202301b4d8b6af08845e3294055eb26b09913ef903c"},
+]
+
+[[package]]
+name = "httplib2"
+version = "0.22.0"
+requires_python = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+summary = "A comprehensive HTTP client library."
+dependencies = [
+    "pyparsing!=3.0.0,!=3.0.1,!=3.0.2,!=3.0.3,<4,>=2.4.2; python_version > \"3.0\"",
+    "pyparsing<3,>=2.4.2; python_version < \"3.0\"",
+]
+files = [
+    {file = "httplib2-0.22.0-py3-none-any.whl", hash = "sha256:14ae0a53c1ba8f3d37e9e27cf37eabb0fb9980f435ba405d546948b009dd64dc"},
+    {file = "httplib2-0.22.0.tar.gz", hash = "sha256:d7a10bc5ef5ab08322488bde8c726eeee5c8618723fdb399597ec58f3d82df81"},
 ]
 
 [[package]]
@@ -1580,6 +1626,16 @@ summary = "Backported and Experimental Type Hints for Python 3.8+"
 files = [
     {file = "typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"},
     {file = "typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"},
+]
+
+[[package]]
+name = "uritemplate"
+version = "4.1.1"
+requires_python = ">=3.6"
+summary = "Implementation of RFC 6570 URI Templates"
+files = [
+    {file = "uritemplate-4.1.1-py2.py3-none-any.whl", hash = "sha256:830c08b8d99bdd312ea4ead05994a38e8936266f84b9a7878232db50b044e02e"},
+    {file = "uritemplate-4.1.1.tar.gz", hash = "sha256:4346edfc5c3b79f694bccd6d6099a322bbeb628dbf2cd86eea55a456ce5124f0"},
 ]
 
 [[package]]
