@@ -347,8 +347,17 @@ class OpenAIChatBot(ChatBotAbc):
         openai_models = (await self.openai_client.models.list()).data
         models = []
         for model in openai_models:
-            if not model.id.startswith("gpt-4") and not model.id.startswith("o1"):
+            if not model.id.startswith("gpt-4") and not model.id.startswith("o"):
                 # skip other models
+                logger.debug(f"Skipping model: {model.id}")
+                continue
+            if "audio" in model.id:
+                # skip audio models
+                logger.debug(f"Skipping audio model: {model.id}")
+                continue
+            if "realtime" in model.id:
+                # skip real models
+                logger.debug(f"Skipping real model: {model.id}")
                 continue
             model_id = f"{self.provider}-{model.id}"
             models.append(
