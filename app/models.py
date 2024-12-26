@@ -2,6 +2,7 @@ import abc
 import json
 import logging
 import os
+import re
 from functools import cache
 
 import anthropic
@@ -347,7 +348,7 @@ class OpenAIChatBot(ChatBotAbc):
         openai_models = (await self.openai_client.models.list()).data
         models = []
         for model in openai_models:
-            if not model.id.startswith("gpt-4") and not model.id.startswith("o"):
+            if not re.match(r"gpt-\d", model.id) and not re.match(r"o\d", model.id):
                 # skip other models
                 logger.debug(f"Skipping model: {model.id}")
                 continue
