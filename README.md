@@ -1,51 +1,30 @@
 # Raycast AI Proxy
 
-This is a simple [Raycast AI](https://raycast.com/) API proxy. It allows you to use the [Raycast AI](https://raycast.com/ai) application without subscribing. The proxy converts requests
-from Raycast into a format to send to the OpenAI API, and then converts the responses back into Raycast’s format.
+This is a simple [Raycast AI](https://raycast.com/) API proxy. It allows you to use the [Raycast AI](https://raycast.com/ai) application without subscribing. The proxy converts requests from Raycast into a format to send to AI model providers (e.g., OpenAI), and then converts the responses back into Raycast’s format.
 
 [English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md)
 
 ## Introduction
 
-This project uses a man-in-the-middle approach to forward Raycast requests to the OpenAI API, and then forward the OpenAI responses back to Raycast.
+This project uses a man-in-the-middle approach to intercept and forward Raycast requests to various AI APIs, then returns the responses after reformatting them for Raycast. It primarily maps:
 
-The project mainly maps the following interfaces:
+- `GET /api/v1/me`: Modifies the flag indicating user support for AI.  
+- `POST /api/v1/translations`: Translation interface.  
+- `POST /api/v1/ai/chat_completions`: Common AI interface.  
+- `GET /api/v1/ai/models`: AI model list interface.
 
-- `GET /api/v1/me` Modifies the flag indicating user support for AI functionality
-- `POST /api/v1/translations` Translation interface
-- `POST /api/v1/ai/chat_completions` Common AI interface
-- `GET /api/v1/ai/models` AI model list interface
+### How It Works (Man-in-the-Middle)
 
-The simple principle of the man-in-the-middle proxy is to modify the DNS to direct Raycast’s request IP to the project’s address. The project then forwards the requests to the OpenAI API
-and returns the responses after converting them. However, since Raycast and the Raycast API use HTTPS, the project needs to provide a self-signed certificate and make Raycast trust this
-certificate. For more details on man-in-the-middle proxies, you can refer to (<https://docs.mitmproxy.org/stable/concepts-howmitmproxyworks/>).
+1. Modify DNS or `/etc/hosts` to point `backend.raycast.com` to this proxy instead of the official server.  
+2. The proxy receives the HTTPS requests from Raycast.  
+3. A self-signed certificate is used to decrypt and forward these requests to the configured AI endpoints (e.g., OpenAI, Anthropic).  
+4. The responses are re-encrypted and returned to Raycast.  
 
-### Supported Models
->
-> Multiple models can be used simultaneously by setting the corresponding environment variables.
-
-| Model Provider | Models | Test Status | Environment Variables | Image generation |
-| --- | --- | --- | --- | --- |
-| `openai` | **from api** | Tested | `OPENAI_API_KEY` | Supported |
-| `azure openai` | Same as above | Tested | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` | Supported |
-| `google` | gemini-pro, gemini-1.5-pro | Tested | `GOOGLE_API_KEY` | x |
-| `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | Tested | `ANTHROPIC_API_KEY` | x |
-
-#### support openai api compatible providers
-
-##### Example for [Ollama](https://ollama.com/)
-
-add environment variables
-
-- `OPENAI_PROVIDER=ollama`
-- `OPENAI_BASE_URL=http://localhost:11434/v1`
-- `OPENAI_API_KEY=ollama` # required, but unused
-
-models will be fetched from `http://localhost:11434/v1/models`
+Because Raycast and its API communicate via HTTPS, you need to trust the self-signed certificate for this interception to work. More details on man-in-the-middle proxies can be found at [mitmproxy documentation](https://docs.mitmproxy.org/stable/concepts-howmitmproxyworks/).
 
 ### YAML-Based Model Configuration
 
-You can now configure multiple models (e.g., OpenAI and other OpenAI-compatible providers) by editing the `config.yml` file instead of using only environment variables.
+Environment variables are becoming deprecated. Now you can define multiple models in `config.yml`, allowing providers to coexist:
 
 ```yaml
 models:
@@ -55,18 +34,45 @@ models:
       api_key: "sk-xxxx"
       allow_model_patterns:
         - "gpt-\\d+"
-
+  - provider_name: "azure openai"
+    api_type: "openai"
+    params:
+      api_key: "xxxxxx"
+      base_url: "https://your-resource.openai.azure.com"
+      # ...
+  - provider_name: "google"
+    api_type: "gemini"
+    params:
+      api_key: "xxxxxx"
   - provider_name: "anthropic"
     api_type: "anthropic"
     params:
       api_key: "sk-ant-xxx"
-
-  - provider_name: "DeepSeek"
-    api_type: "openai" # openai compatible
+  - provider_name: "deepseek"
+    api_type: "openai"   # openai-compatible
     params:
       api_key: "sk-deepseek-xxx"
-
+default_model: "gpt-4"
 ```
+
+Each provider entry specifies the provider name, API type, and parameters.
+
+- `provider_name`: The provider name. used for identification.
+- `api_type`: The API type. For example, `openai`, `gemini`, or `anthropic`.
+- `params`: `base_url`, `api_key`, and other parameters required by the provider.
+
+Supported providers:
+you can combine multiple models, Common options include:
+
+| Provider | Model | Test Status | Image Generation |
+| --- | --- | --- | --- |
+| `openai` | **from api** | Tested | Supported |
+| `azure openai` | Same as above | Tested | Supported |
+| `google` | **from api** | Tested | Not supported |
+| `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | Tested | Not supported |
+| `deepseek` | **from api** | Tested | Not supported |
+| `ollama` | **from api** | Tested | Not Supported |
+
 
 Refer to the `config.yml.example` file for more details.
 
