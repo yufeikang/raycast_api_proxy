@@ -1,0 +1,24 @@
+models:
+  - provider_name: "openai"
+    api_type: "openai"
+    params:
+      api_key: "sk-xxxx"
+      allow_model_patterns:
+        - "gpt-\\d+"  # Matches any model name that starts with "gpt-" followed by one or more digits
+        - "o1"  # Matches the model name "o1"
+  - provider_name: "anthropic"
+    api_type: "anthropic"
+    params:
+      api_key: "sk-ant-xxx"
+  - provider_name: "Google Gemini"
+    api_type: "gemini"
+    params:
+      api_key: "xxxxxx"
+  - provider_name: "DeepSeek"
+    api_type: "openai"
+    params:
+      api_key: "sk-xxxx"
+      base_url: "https://api.deepseek.com"
+      temperature: 0.9
+
+default_model: "gpt-4o"

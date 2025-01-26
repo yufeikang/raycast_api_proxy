@@ -43,6 +43,33 @@ add environment variables
 
 models will be fetched from `http://localhost:11434/v1/models`
 
+### YAML-Based Model Configuration
+
+You can now configure multiple models (e.g., OpenAI and other OpenAI-compatible providers) by editing the `config.yml` file instead of using only environment variables.
+
+```yaml
+models:
+  - provider_name: "openai"
+    api_type: "openai"
+    params:
+      api_key: "sk-xxxx"
+      allow_model_patterns:
+        - "gpt-\\d+"
+
+  - provider_name: "anthropic"
+    api_type: "anthropic"
+    params:
+      api_key: "sk-ant-xxx"
+
+  - provider_name: "DeepSeek"
+    api_type: "openai" # openai compatible
+    params:
+      api_key: "sk-deepseek-xxx"
+
+```
+
+Refer to the `config.yml.example` file for more details.
+
 ### Ai chat
 
 ![ai chat](./assert/img/chat.jpeg)

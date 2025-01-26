@@ -4,20 +4,23 @@ import logging
 import os
 import re
 from functools import cache
+from pathlib import Path
+from typing import List
 
 import anthropic
 import google.generativeai as genai
 import openai
+import yaml
 from google.generativeai import GenerativeModel
 
 from app.utils import json_dumps
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = os.environ.get("DEFAULT_MODEL")
 
+class ApiProviderAbc(abc.ABC):
 
-class ChatBotAbc(abc.ABC):
+    api_type = None
 
     @classmethod
     @abc.abstractmethod
@@ -112,7 +115,9 @@ def _get_model_extra_info(name=""):
     return ext
 
 
-class OpenAIChatBot(ChatBotAbc):
+class OpenAIProvider(ApiProviderAbc):
+
+    api_type = "openai"
 
     @classmethod
     def is_start_available(cls):
@@ -120,28 +125,54 @@ class OpenAIChatBot(ChatBotAbc):
             "AZURE_OPENAI_API_KEY"
         )
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        api_key: str = None,
+        base_url: str = None,
+        provider: str = "openai",
+        allow_model_patterns: List[str] = [],
+        skip_models_patterns: List[str] = [],
+        temperature: float = 0.8,
+        **kwargs,
+    ) -> None:
         super().__init__()
-        self.provider = os.environ.get(
+        self.provider = provider or os.environ.get(
             "OPENAI_PROVIDER", "openai"
         )  # for openai api compatible provider
-        openai.api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get(
-            "AZURE_OPENAI_API_KEY"
+        api_key = (
+            api_key
+            or os.environ.get("OPENAI_API_KEY")
+            or os.environ.get("AZURE_OPENAI_API_KEY")
         )
-        is_azure = openai.api_type in ("azure", "azure_ad", "azuread")
-        if is_azure:
-            logger.info("Using Azure API")
-            self.openai_client = openai.AsyncAzureOpenAI(
-                azure_endpoint=os.environ.get("OPENAI_AZURE_ENDPOINT"),
-                azure_deployment=os.environ.get("AZURE_DEPLOYMENT_ID", None),
-            )
+        base_url = base_url or os.environ.get("OPENAI_BASE_URL")
+        self.temperature = temperature
+        self.allow_model_patterns = allow_model_patterns
+        if not allow_model_patterns and provider == "openai":
+            self.allow_model_patterns = ["gpt-\\d+", "o1"]
+            logger.debug(f"Model filter: {self.allow_model_patterns}")
+        self.skip_models_patterns = skip_models_patterns
+        if not skip_models_patterns and provider == "openai":
+            self.skip_models_patterns = [
+                # include all realtime models
+                ".+realtime.\\+",
+                ".+audio.\\+",
+                ".+\\d{4}-\\d{2}-\\d{2}$",
+            ]
+            logger.debug(f"Skip model filter: {self.skip_models_patterns}")
+        if kwargs and "is_azure" in kwargs:
+            logger.info("Init Azure API")
+            del kwargs["is_azure"]
+            self.openai_client = openai.AsyncAzureOpenAI(**kwargs)
         else:
-            logger.info("Using OpenAI API")
-            self.openai_client = openai.AsyncOpenAI()
+            logger.info(f"Init OpenAI API via {self.provider}")
+            logger.info(f"OpenAI API base url: {openai.base_url}")
+            self.openai_client = openai.AsyncOpenAI(
+                api_key=api_key, base_url=base_url, **kwargs
+            )
 
     def __build_openai_messages(self, raycast_data: dict):
         openai_messages = []
-        temperature = os.environ.get("TEMPERATURE", 0.5)
+        temperature = self.temperature
         for msg in raycast_data["messages"]:
             if "system_instructions" in msg["content"]:
                 openai_messages.append(
@@ -298,6 +329,22 @@ class OpenAIChatBot(ChatBotAbc):
             if choice.delta:
                 yield choice.delta.content
 
+    def __merge_messages(self, messages):
+        """
+        merge same role messages to one message
+        """
+        merged_messages = []
+        for msg in messages:
+            if not merged_messages:
+                merged_messages.append(msg)
+                continue
+            last_msg = merged_messages[-1]
+            if last_msg.get("role") == msg.get("role"):
+                last_msg["content"] += "\n" + msg.get("content")
+            else:
+                merged_messages.append(msg)
+        return merged_messages
+
     async def __chat(self, messages, model, temperature, **kwargs):
         if "tools" in kwargs and not kwargs["tools"]:
             # pop tools from kwargs, empty tools will cause error
@@ -305,11 +352,16 @@ class OpenAIChatBot(ChatBotAbc):
         # stream = "tools" not in kwargs
         stream = "stream" in kwargs and kwargs["stream"]
         try:
+            not_support_system_role_models = ["o1", "o1-mini", "deepseek-reasoner"]
             for m in messages:
                 # check model is o1 replace role system to user
-                if model.startswith("o1") and m.get("role") == "system":
+                if (
+                    model in not_support_system_role_models
+                    and m.get("role") == "system"
+                ):
                     m["role"] = "user"
-            logger.debug(f"openai chat stream: {stream}")
+            messages = self.__merge_messages(messages)
+            logger.debug(f"openai chat, messages: {messages}")
             res = await self.openai_client.chat.completions.create(
                 model=model,
                 messages=messages,
@@ -348,19 +400,17 @@ class OpenAIChatBot(ChatBotAbc):
         openai_models = (await self.openai_client.models.list()).data
         models = []
         for model in openai_models:
-            if not re.match(r"gpt-\d", model.id) and not re.match(r"o\d", model.id):
-                # skip other models
-                logger.debug(f"Skipping model: {model.id}")
+            if self.allow_model_patterns and all(
+                not re.match(f, model.id) for f in self.allow_model_patterns
+            ):
+                logger.debug(f"Skipping model: {model.id}, not match any allow filter")
                 continue
-            if "audio" in model.id:
-                # skip audio models
-                logger.debug(f"Skipping audio model: {model.id}")
+            if any(re.match(f, model.id) for f in self.skip_models_patterns):
+                logger.debug(f"Skipping model: {model.id} match skip filter")
                 continue
-            if "realtime" in model.id:
-                # skip real models
-                logger.debug(f"Skipping real model: {model.id}")
-                continue
+
             model_id = f"{self.provider}-{model.id}"
+            logger.debug(f"Allowed model: {model.id}")
             models.append(
                 {
                     "id": model_id,
@@ -376,12 +426,14 @@ class OpenAIChatBot(ChatBotAbc):
         return {"default_models": default_models, "models": models}
 
 
-class GeminiChatBot(ChatBotAbc):
-    def __init__(self) -> None:
+class GeminiProvider(ApiProviderAbc):
+    api_type = "gemini"
+
+    def __init__(self, api_key=None, **kwargs) -> None:
         super().__init__()
-        logger.info("Using Google API")
-        google_api_key = os.environ.get("GOOGLE_API_KEY")
-        genai.configure(api_key=google_api_key)
+        logger.info("Init Google API")
+        self.temperature = kwargs.get("temperature", os.environ.get("TEMPERATURE", 0.5))
+        genai.configure(api_key=api_key or os.environ.get("GOOGLE_API_KEY"))
 
     @classmethod
     def is_start_available(cls):
@@ -391,7 +443,7 @@ class GeminiChatBot(ChatBotAbc):
         model_name = raycast_data["model"]
         model = genai.GenerativeModel(model_name)
         google_message = []
-        temperature = os.environ.get("TEMPERATURE", 0.5)
+        temperature = self.temperature
         for msg in raycast_data["messages"]:
             content = {"role": "user"}
             parts = []
@@ -484,28 +536,32 @@ class GeminiChatBot(ChatBotAbc):
         return {"default_models": default_models, "models": models}
 
 
-class AnthropicChatBot(ChatBotAbc):
+class AnthropicProvider(ApiProviderAbc):
+    api_type = "anthropic"
+
     @classmethod
     def is_start_available(cls):
         return os.environ.get("ANTHROPIC_API_KEY")
 
-    def __init__(self) -> None:
+    def __init__(self, api_key=None, max_token=None, **kwargs) -> None:
         super().__init__()
-        logger.info("Using Anthropic API")
+        logger.info("Init Anthropic API")
+        self.max_tokens = kwargs.get("max_tokens", os.environ.get("MAX_TOKENS", 8192))
+        self.temperature = kwargs.get("temperature", os.environ.get("TEMPERATURE", 0.5))
         self.anthropic_client = anthropic.AsyncAnthropic(
-            api_key=os.environ.get("ANTHROPIC_API_KEY")
+            api_key=api_key or os.environ.get("ANTHROPIC_API_KEY")
         )
 
     async def chat_completions(self, raycast_data: dict):
         messages = self.__build_anthropic_messages(raycast_data)
         model = raycast_data["model"]
-        temperature = os.environ.get("TEMPERATURE", 0.5)
 
         try:
             response = await self.anthropic_client.messages.create(
+                max_tokens=self.max_tokens,
                 model=model,
                 messages=messages,
-                temperature=temperature,
+                temperature=self.temperature,
                 stream=True,
             )
             async for chunk in response:
@@ -520,7 +576,6 @@ class AnthropicChatBot(ChatBotAbc):
     def __build_anthropic_messages(self, raycast_data: dict):
         anthropic_messages = []
         for msg in raycast_data["messages"]:
-            content = {}
             if "system_instructions" in msg["content"]:
                 anthropic_messages.append(
                     {"role": "system", "content": msg["content"]["system_instructions"]}
@@ -550,9 +605,10 @@ class AnthropicChatBot(ChatBotAbc):
 
         try:
             response = await self.anthropic_client.messages.create(
+                max_tokens=self.max_tokens,
                 model=model,
                 messages=messages,
-                temperature=0.8,
+                temperature=self.temperature,
                 stream=True,
             )
             async for chunk in response:
@@ -605,34 +661,53 @@ DEFAULT_MODELS = {}
 AVAILABLE_DEFAULT_MODELS = []
 
 
-async def init_models():
+async def _add_available_model(api: ApiProviderAbc):
     global MODELS_DICT, MODELS_AVAILABLE, DEFAULT_MODELS, AVAILABLE_DEFAULT_MODELS
-    if GeminiChatBot.is_start_available():
-        logger.info("Google API is available")
-        _bot = GeminiChatBot()
-        _models = await _bot.get_models()
-        MODELS_AVAILABLE.extend(_models["models"])
-        AVAILABLE_DEFAULT_MODELS.append(_models["default_models"])
-        MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
-    if OpenAIChatBot.is_start_available():
-        logger.info("OpenAI API is available")
-        _bot = OpenAIChatBot()
-        _models = await _bot.get_models()
-        MODELS_AVAILABLE.extend(_models["models"])
-        AVAILABLE_DEFAULT_MODELS.append(_models["default_models"])
-        MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
-    if AnthropicChatBot.is_start_available():
-        logger.info("Anthropic API is available")
-        _bot = AnthropicChatBot()
-        _models = await _bot.get_models()
-        MODELS_AVAILABLE.extend(_models["models"])
-        AVAILABLE_DEFAULT_MODELS.append(_models["default_models"])
-        MODELS_DICT.update({model["model"]: _bot for model in _models["models"]})
 
-    DEFAULT_MODELS = next(iter(AVAILABLE_DEFAULT_MODELS))
-    if DEFAULT_MODEL and DEFAULT_MODEL in MODELS_DICT:
-        DEFAULT_MODELS = MODELS_DICT[DEFAULT_MODEL]
-        logger.info(f"Using default model: {DEFAULT_MODEL}")
+    models = await api.get_models()
+    MODELS_AVAILABLE.extend(models["models"])
+    AVAILABLE_DEFAULT_MODELS.append(models["default_models"])
+    MODELS_DICT.update({model["model"]: api for model in models["models"]})
+
+
+async def init_models():
+    config_file = Path(os.environ.get("CONFIG_PATH", "config.yml"))
+    if not config_file.exists():
+        logger.info(f"Config file not found: {config_file}")
+        await init_models_from_env()
+        return
+    config = yaml.load(config_file.read_text(), Loader=yaml.FullLoader)
+    # get all implement for ProviderApiAbc
+    impl = {cls.api_type: cls for cls in ApiProviderAbc.__subclasses__()}
+    for model_config in config["models"]:
+        api_type = model_config.get("api_type")
+        try:
+            logger.info(f"Init model: {model_config['provider_name']}")
+            api = impl[api_type](
+                **model_config["params"], provider=model_config["provider_name"]
+            )
+            await _add_available_model(api)
+
+        except KeyError:
+            logger.error(f"Unknown api type: {api_type}")
+        except Exception as e:
+            logger.error(f"Error init model: {model_config}, {e}")
+
+
+async def init_models_from_env():
+    logger.warning("Use config.yml, this method is deprecated")
+    if GeminiProvider.is_start_available():
+        logger.info("Google API is available")
+        _api = GeminiProvider()
+        await _add_available_model(_api)
+    if OpenAIProvider.is_start_available():
+        logger.info("OpenAI API is available")
+        _api = OpenAIProvider()
+        await _add_available_model(_api)
+    if AnthropicProvider.is_start_available():
+        logger.info("Anthropic API is available")
+        _api = AnthropicProvider()
+        await _add_available_model(_api)
 
 
 def get_bot(model_id):

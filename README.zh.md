@@ -41,6 +41,32 @@
 
 模型将从`http://localhost:11434/v1/models`获取
 
+### 基于YAML的模型配置
+
+您现在可以通过编辑`config.yml`文件来配置多个模型（例如OpenAI和其他兼容OpenAI提供程序），而不仅仅是使用环境变量。
+
+```yaml
+models:
+  - provider_name: "openai"
+    api_type: "openai"
+    params:
+      api_key: "sk-xxxx"
+      allow_model_patterns:
+        - "gpt-\\d+"
+
+  - provider_name: "anthropic"
+    api_type: "anthropic"
+    params:
+      api_key: "sk-ant-xxx"
+
+  - provider_name: "DeepSeek"
+    api_type: "deepseek"
+    params:
+      api_key: "sk-deepseek-xxx"
+```
+
+有关更多详细信息，请参考`config.yml.example`文件。
+
 ### Ai chat
 
 ![ai chat](./assert/img/chat.jpeg)
