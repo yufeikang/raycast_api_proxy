@@ -19,6 +19,7 @@ models:
         - "^.*-exp$"
       skip_models_patterns:
         - "^gemini-1.0-.*$"
+      harm_threshold: "BLOCK_ONLY_HIGH"
 
   - provider_name: "DeepSeek"
     api_type: "openai"

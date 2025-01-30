@@ -435,6 +435,7 @@ class GeminiProvider(ApiProviderAbc):
         allow_model_patterns: List[str] = [],
         skip_models_patterns: List[str] = [],
         temperature: float = 0.5,
+        harm_threshold: str = "BLOCK_ONLY_HIGH",
         **kwargs
     ) -> None:
         super().__init__()
@@ -450,6 +451,11 @@ class GeminiProvider(ApiProviderAbc):
             kwargs.get("temperature") or
             os.environ.get("TEMPERATURE") or
             temperature
+        )
+        self.harm_threshold = (
+            kwargs.get("harm_threshold") or
+            os.environ.get("GOOGLE_HARM_THRESHOLD") or
+            harm_threshold
         )
         genai.configure(api_key=api_key or os.environ.get("GOOGLE_API_KEY"))
 
@@ -520,6 +526,18 @@ class GeminiProvider(ApiProviderAbc):
                 candidate_count=1,
                 temperature=temperature,
             ),
+            safety_settings = [
+                {
+                    "category": category,
+                    "threshold": self.harm_threshold
+                }
+                for category in [
+                    "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "HARM_CATEGORY_HARASSMENT",
+                    "HARM_CATEGORY_HATE_SPEECH",
+                    "HARM_CATEGORY_SEXUALLY_EXPLICIT"
+                ]
+            ],
         )
 
     async def get_models(self):
