@@ -14,6 +14,12 @@ models:
     api_type: "gemini"
     params:
       api_key: "xxxxxx"
+      allow_model_patterns:
+        - "^.*-latest$"
+        - "^.*-exp$"
+      skip_models_patterns:
+        - "^gemini-1.0-.*$"
+
   - provider_name: "DeepSeek"
     api_type: "openai"
     params:

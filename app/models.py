@@ -429,10 +429,28 @@ class OpenAIProvider(ApiProviderAbc):
 class GeminiProvider(ApiProviderAbc):
     api_type = "gemini"
 
-    def __init__(self, api_key=None, **kwargs) -> None:
+    def __init__(
+        self,
+        api_key=None,
+        allow_model_patterns: List[str] = [],
+        skip_models_patterns: List[str] = [],
+        temperature: float = 0.5,
+        **kwargs
+    ) -> None:
         super().__init__()
         logger.info("Init Google API")
-        self.temperature = kwargs.get("temperature", os.environ.get("TEMPERATURE", 0.5))
+        self.allow_model_patterns = allow_model_patterns or [
+            "^.*-latest$",
+            "^.*-exp$",
+        ]
+        self.skip_models_patterns = skip_models_patterns or [
+            "^gemini-1.0-.*$",
+        ]
+        self.temperature = (
+            kwargs.get("temperature") or
+            os.environ.get("TEMPERATURE") or
+            temperature
+        )
         genai.configure(api_key=api_key or os.environ.get("GOOGLE_API_KEY"))
 
     @classmethod
@@ -504,36 +522,31 @@ class GeminiProvider(ApiProviderAbc):
             ),
         )
 
-    def __remove_model_name_prefix(self, model_name):
-        return model_name.replace("models/", "")
-
     async def get_models(self):
         genai_models = genai.list_models()
-        # filter gemini models
-        genai_models = [
-            model
-            for model in genai_models
-            if model.name.endswith("latest") or model.name.endswith("exp")
-        ]
-        default_models = _get_default_model_dict(
-            self.__remove_model_name_prefix(genai_models[0].name)
-        )
-
-        models = [
-            {
-                "id": self.__remove_model_name_prefix(model.name),
-                "model": self.__remove_model_name_prefix(model.name),
+        models = []
+        for model in genai_models:
+            model_id = model.name.replace("models/", "")
+            if not any(re.match(f, model_id) for f in self.allow_model_patterns):
+                logger.debug(f"Skipping model: {model_id}, not match any allow filter")
+                continue
+            if any(re.match(f, model_id) for f in self.skip_models_patterns):
+                logger.debug(f"Skipping model: {model_id} match skip filter")
+                continue
+            models.append({
+                "id": model_id,
+                "model": model_id,
                 "name": model.display_name,
                 "provider": "google",
                 "provider_name": "Google",
                 "provider_brand": "google",
                 "context": 16,
-                **_get_model_extra_info(self.__remove_model_name_prefix(model.name)),
-            }
-            for model in genai_models
-        ]
-
-        return {"default_models": default_models, "models": models}
+                **_get_model_extra_info(model_id),
+            })
+        return {
+            "default_models": _get_default_model_dict(models[0]["id"]),
+            "models": models
+        }
 
 
 class AnthropicProvider(ApiProviderAbc):
