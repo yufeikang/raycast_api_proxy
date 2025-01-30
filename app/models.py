@@ -112,6 +112,15 @@ def _get_model_extra_info(name=""):
                 "supported": False,
             },
         }
+    if "gemini" in name:
+        ext["abilities"] = {
+            "system_message": {
+                "supported": True,
+            },
+            "temperature": {
+                "supported": True,
+            },
+        }
     return ext
 
 
@@ -465,9 +474,19 @@ class GeminiProvider(ApiProviderAbc):
 
     async def chat_completions(self, raycast_data: dict):
         model_name = raycast_data["model"]
-        model = genai.GenerativeModel(model_name)
+        system_instruction = "\n".join(filter(None, [
+            raycast_data.get("system_instruction"),
+            raycast_data.get("additional_system_instructions"),
+        ]))
+        model = genai.GenerativeModel(
+            model_name,
+            system_instruction=system_instruction or None
+        )
+        temperature = (
+            raycast_data.get("temperature") or
+            self.temperature
+        )
         google_message = []
-        temperature = self.temperature
         for msg in raycast_data["messages"]:
             content = {"role": "user"}
             parts = []
