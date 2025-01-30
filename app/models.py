@@ -534,14 +534,15 @@ class GeminiProvider(ApiProviderAbc):
                 logger.debug(f"Skipping model: {model_id} match skip filter")
                 continue
             models.append({
+                **_get_model_extra_info(model_id),
                 "id": model_id,
                 "model": model_id,
                 "name": model.display_name,
+                "description": model.description,
                 "provider": "google",
                 "provider_name": "Google",
                 "provider_brand": "google",
-                "context": 16,
-                **_get_model_extra_info(model_id),
+                "context": int(model.input_token_limit / 1000),
             })
         return {
             "default_models": _get_default_model_dict(models[0]["id"]),
