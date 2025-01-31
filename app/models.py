@@ -112,6 +112,15 @@ def _get_model_extra_info(name=""):
                 "supported": False,
             },
         }
+    if "gemini" in name:
+        ext["abilities"] = {
+            "system_message": {
+                "supported": True,
+            },
+            "temperature": {
+                "supported": True,
+            },
+        }
     return ext
 
 
@@ -429,10 +438,34 @@ class OpenAIProvider(ApiProviderAbc):
 class GeminiProvider(ApiProviderAbc):
     api_type = "gemini"
 
-    def __init__(self, api_key=None, **kwargs) -> None:
+    def __init__(
+        self,
+        api_key=None,
+        allow_model_patterns: List[str] = [],
+        skip_models_patterns: List[str] = [],
+        temperature: float = 0.5,
+        harm_threshold: str = "BLOCK_ONLY_HIGH",
+        **kwargs
+    ) -> None:
         super().__init__()
         logger.info("Init Google API")
-        self.temperature = kwargs.get("temperature", os.environ.get("TEMPERATURE", 0.5))
+        self.allow_model_patterns = allow_model_patterns or [
+            "^.*-latest$",
+            "^.*-exp$",
+        ]
+        self.skip_models_patterns = skip_models_patterns or [
+            "^gemini-1.0-.*$",
+        ]
+        self.temperature = (
+            kwargs.get("temperature") or
+            os.environ.get("TEMPERATURE") or
+            temperature
+        )
+        self.harm_threshold = (
+            kwargs.get("harm_threshold") or
+            os.environ.get("GOOGLE_HARM_THRESHOLD") or
+            harm_threshold
+        )
         genai.configure(api_key=api_key or os.environ.get("GOOGLE_API_KEY"))
 
     @classmethod
@@ -441,9 +474,19 @@ class GeminiProvider(ApiProviderAbc):
 
     async def chat_completions(self, raycast_data: dict):
         model_name = raycast_data["model"]
-        model = genai.GenerativeModel(model_name)
+        system_instruction = "\n".join(filter(None, [
+            raycast_data.get("system_instruction"),
+            raycast_data.get("additional_system_instructions"),
+        ]))
+        model = genai.GenerativeModel(
+            model_name,
+            system_instruction=system_instruction or None
+        )
+        temperature = (
+            raycast_data.get("temperature") or
+            self.temperature
+        )
         google_message = []
-        temperature = self.temperature
         for msg in raycast_data["messages"]:
             content = {"role": "user"}
             parts = []
@@ -502,38 +545,46 @@ class GeminiProvider(ApiProviderAbc):
                 candidate_count=1,
                 temperature=temperature,
             ),
+            safety_settings = [
+                {
+                    "category": category,
+                    "threshold": self.harm_threshold
+                }
+                for category in [
+                    "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "HARM_CATEGORY_HARASSMENT",
+                    "HARM_CATEGORY_HATE_SPEECH",
+                    "HARM_CATEGORY_SEXUALLY_EXPLICIT"
+                ]
+            ],
         )
-
-    def __remove_model_name_prefix(self, model_name):
-        return model_name.replace("models/", "")
 
     async def get_models(self):
         genai_models = genai.list_models()
-        # filter gemini models
-        genai_models = [
-            model
-            for model in genai_models
-            if model.name.endswith("latest") or model.name.endswith("exp")
-        ]
-        default_models = _get_default_model_dict(
-            self.__remove_model_name_prefix(genai_models[0].name)
-        )
-
-        models = [
-            {
-                "id": self.__remove_model_name_prefix(model.name),
-                "model": self.__remove_model_name_prefix(model.name),
+        models = []
+        for model in genai_models:
+            model_id = model.name.replace("models/", "")
+            if not any(re.match(f, model_id) for f in self.allow_model_patterns):
+                logger.debug(f"Skipping model: {model_id}, not match any allow filter")
+                continue
+            if any(re.match(f, model_id) for f in self.skip_models_patterns):
+                logger.debug(f"Skipping model: {model_id} match skip filter")
+                continue
+            models.append({
+                **_get_model_extra_info(model_id),
+                "id": model_id,
+                "model": model_id,
                 "name": model.display_name,
+                "description": model.description,
                 "provider": "google",
                 "provider_name": "Google",
                 "provider_brand": "google",
-                "context": 16,
-                **_get_model_extra_info(self.__remove_model_name_prefix(model.name)),
-            }
-            for model in genai_models
-        ]
-
-        return {"default_models": default_models, "models": models}
+                "context": int(model.input_token_limit / 1000),
+            })
+        return {
+            "default_models": _get_default_model_dict(models[0]["id"]),
+            "models": models
+        }
 
 
 class AnthropicProvider(ApiProviderAbc):
