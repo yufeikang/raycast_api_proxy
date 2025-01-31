@@ -681,6 +681,7 @@ async def init_models():
         await init_models_from_env()
         return
     config = yaml.load(config_file.read_text(), Loader=yaml.FullLoader)
+    default_model = config.get("default_model")
     # get all implement for ProviderApiAbc
     impl = {cls.api_type: cls for cls in ApiProviderAbc.__subclasses__()}
     for model_config in config["models"]:
@@ -690,7 +691,6 @@ async def init_models():
             api = impl[api_type](
                 **model_config["params"], provider=model_config["provider_name"]
             )
-            default_model = config.get("default_model")
             await _add_available_model(api, default_model)
 
         except KeyError:
