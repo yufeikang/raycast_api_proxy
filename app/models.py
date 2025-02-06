@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import List
 
 import anthropic
-import google.generativeai as genai
+import google.genai as genai
+import google.genai.types as genai_types
 import openai
 import yaml
-from google.generativeai import GenerativeModel
 
 from app.utils import json_dumps
 
@@ -466,7 +466,10 @@ class GeminiProvider(ApiProviderAbc):
             os.environ.get("GOOGLE_HARM_THRESHOLD") or
             harm_threshold
         )
-        genai.configure(api_key=api_key or os.environ.get("GOOGLE_API_KEY"))
+        self.client = genai.Client(
+            api_key=api_key or
+            os.environ.get("GOOGLE_API_KEY")
+        )
 
     @classmethod
     def is_start_available(cls):
@@ -478,10 +481,6 @@ class GeminiProvider(ApiProviderAbc):
             raycast_data.get("system_instruction"),
             raycast_data.get("additional_system_instructions"),
         ]))
-        model = genai.GenerativeModel(
-            model_name,
-            system_instruction=system_instruction or None
-        )
         temperature = (
             raycast_data.get("temperature") or
             self.temperature
@@ -506,61 +505,69 @@ class GeminiProvider(ApiProviderAbc):
 
         logger.debug(f"text: {google_message}")
         result = self.__generate_content(
-            model, google_message, temperature, stream=True
+            model_name, google_message, temperature, system_instruction
         )
-        try:
-            for chunk in result:
+        for chunk in result:
+            if chunk.prompt_feedback:
+                feedback = chunk.prompt_feedback.block_reason_message
+                logger.debug(f"Gemini response finish: {feedback}")
+                yield f'data: {json_dumps({"text": "", "finish_reason": feedback})}\n\n'
+            else:
                 logger.debug(f"Gemini chat_completions response chunk: {chunk.text}")
                 yield f'data: {json_dumps({"text": chunk.text})}\n\n'
-        except genai.types.BlockedPromptException as e:
-            logger.debug(f"Gemini response finish: {e}")
-            yield f'data: {json_dumps({"text": "", "finish_reason": e})}\n\n'
 
     async def translate_completions(self, raycast_data: dict):
         model_name = raycast_data.get("model", "gemini-pro")
-        model = genai.GenerativeModel(model_name)
         target_language = raycast_data["target"]
         google_message = f"translate the following text to {target_language}:\n"
         google_message += raycast_data["q"]
         logger.debug(f"text: {google_message}")
         result = self.__generate_content(
-            model, google_message, temperature=0.8, stream=True
+            model_name, google_message, temperature=0.8
         )
-        try:
-            for chunk in result:
+        for chunk in result:
+            if chunk.prompt_feedback:
+                feedback = chunk.prompt_feedback.block_reason_message
+                logger.debug(f"Gemini response finish: {feedback}")
+                yield feedback
+            else:
                 logger.debug(
                     f"Gemini translate_completions response chunk: {chunk.text}"
                 )
                 yield chunk.text
-        except genai.types.BlockedPromptException as e:
-            logger.debug(f"Gemini response finish: {e}")
 
     def __generate_content(
-        self, model: GenerativeModel, google_message, temperature, stream=False
+        self,
+        model,
+        contents,
+        temperature,
+        system_instruction = None,
     ):
-        return model.generate_content(
-            google_message,
-            stream=stream,
-            generation_config=genai.types.GenerationConfig(
+        safety_settings = [genai_types.SafetySetting(**d) for d in [
+            {
+                "category": category,
+                "threshold": self.harm_threshold
+            }
+            for category in [
+                "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "HARM_CATEGORY_HARASSMENT",
+                "HARM_CATEGORY_HATE_SPEECH",
+                "HARM_CATEGORY_SEXUALLY_EXPLICIT"
+            ]
+        ]]
+        return self.client.models.generate_content_stream(
+            model=model,
+            contents=contents,
+            config=genai_types.GenerateContentConfig(
                 candidate_count=1,
+                system_instruction=system_instruction,
                 temperature=temperature,
+                safety_settings=safety_settings
             ),
-            safety_settings = [
-                {
-                    "category": category,
-                    "threshold": self.harm_threshold
-                }
-                for category in [
-                    "HARM_CATEGORY_DANGEROUS_CONTENT",
-                    "HARM_CATEGORY_HARASSMENT",
-                    "HARM_CATEGORY_HATE_SPEECH",
-                    "HARM_CATEGORY_SEXUALLY_EXPLICIT"
-                ]
-            ],
         )
 
     async def get_models(self):
-        genai_models = genai.list_models()
+        genai_models = self.client.models.list()
         models = []
         for model in genai_models:
             model_id = model.name.replace("models/", "")
