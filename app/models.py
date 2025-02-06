@@ -743,7 +743,7 @@ DEFAULT_MODELS = {}
 AVAILABLE_DEFAULT_MODELS = []
 
 
-async def _add_available_model(api: ApiProviderAbc):
+async def _add_available_model(api: ApiProviderAbc, default_model: str = None):
     global MODELS_DICT, MODELS_AVAILABLE, DEFAULT_MODELS, AVAILABLE_DEFAULT_MODELS
 
     models = await api.get_models()
@@ -751,6 +751,10 @@ async def _add_available_model(api: ApiProviderAbc):
     AVAILABLE_DEFAULT_MODELS.append(models["default_models"])
     MODELS_DICT.update({model["model"]: api for model in models["models"]})
 
+    if default_model and default_model in MODELS_DICT:
+        DEFAULT_MODELS.update(_get_default_model_dict(default_model))
+    else:
+        DEFAULT_MODELS.update(next(iter(AVAILABLE_DEFAULT_MODELS)))
 
 async def init_models():
     config_file = Path(os.environ.get("CONFIG_PATH", "config.yml"))
@@ -759,6 +763,7 @@ async def init_models():
         await init_models_from_env()
         return
     config = yaml.load(config_file.read_text(), Loader=yaml.FullLoader)
+    default_model = config.get("default_model")
     # get all implement for ProviderApiAbc
     impl = {cls.api_type: cls for cls in ApiProviderAbc.__subclasses__()}
     for model_config in config["models"]:
@@ -768,7 +773,7 @@ async def init_models():
             api = impl[api_type](
                 **model_config["params"], provider=model_config["provider_name"]
             )
-            await _add_available_model(api)
+            await _add_available_model(api, default_model)
 
         except KeyError:
             logger.error(f"Unknown api type: {api_type}")
@@ -778,18 +783,19 @@ async def init_models():
 
 async def init_models_from_env():
     logger.warning("Use config.yml, this method is deprecated")
+    default_model = os.environ.get("DEFAULT_MODEL")
     if GeminiProvider.is_start_available():
         logger.info("Google API is available")
         _api = GeminiProvider()
-        await _add_available_model(_api)
+        await _add_available_model(_api, default_model)
     if OpenAIProvider.is_start_available():
         logger.info("OpenAI API is available")
         _api = OpenAIProvider()
-        await _add_available_model(_api)
+        await _add_available_model(_api, default_model)
     if AnthropicProvider.is_start_available():
         logger.info("Anthropic API is available")
         _api = AnthropicProvider()
-        await _add_available_model(_api)
+        await _add_available_model(_api, default_model)
 
 
 def get_bot(model_id):
