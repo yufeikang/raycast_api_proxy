@@ -19,7 +19,8 @@ models:
         - "^.*-exp$"
       skip_models_patterns:
         - "^gemini-1.0-.*$"
-      harm_threshold: "BLOCK_ONLY_HIGH"
+      harm_threshold: "BLOCK_ONLY_HIGH" # https://ai.google.dev/gemini-api/docs/safety-settings#safety-filtering-level
+      grounding_threshold: 0.3 # https://ai.google.dev/gemini-api/docs/grounding#dynamic-retrieval
 
   - provider_name: "DeepSeek"
     api_type: "openai"

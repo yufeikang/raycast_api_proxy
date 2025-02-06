@@ -64,14 +64,14 @@ Each provider entry specifies the provider name, API type, and parameters.
 Supported providers:
 you can combine multiple models, Common options include:
 
-| Provider | Model | Test Status | Image Generation |
-| --- | --- | --- | --- |
-| `openai` | **from api** | Tested | Supported |
-| `azure openai` | Same as above | Tested | Supported |
-| `google` | **from api** | Tested | Not supported |
-| `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | Tested | Not supported |
-| `deepseek` | **from api** | Tested | Not supported |
-| `ollama` | **from api** | Tested | Not Supported |
+| Provider | Model | Test Status | Image Generation | Web Search |
+| --- | --- | --- | --- | --- |
+| `openai` | **from api** | Tested | Supported | Not supported |
+| `azure openai` | Same as above | Tested | Supported | Same as above |
+| `google` | **from api** | Tested | Not supported | **from api** |
+| `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | Tested | Not supported | Not supported |
+| `deepseek` | **from api** | Tested | Not supported | Not supported |
+| `ollama` | **from api** | Tested | Not Supported | Not supported |
 
 
 Refer to the `config.yml.example` file for more details.
