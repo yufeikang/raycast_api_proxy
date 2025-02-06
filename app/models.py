@@ -449,6 +449,7 @@ class GeminiProvider(ApiProviderAbc):
         skip_models_patterns: List[str] = [],
         temperature: float = 0.5,
         harm_threshold: str = "BLOCK_ONLY_HIGH",
+        grounding_threshold: float = 0.3,
         **kwargs
     ) -> None:
         super().__init__()
@@ -469,6 +470,11 @@ class GeminiProvider(ApiProviderAbc):
             kwargs.get("harm_threshold") or
             os.environ.get("GOOGLE_HARM_THRESHOLD") or
             harm_threshold
+        )
+        self.grounding_threshold = (
+            kwargs.get("grounding_threshold") or
+            os.environ.get("GOOGLE_GROUNDING_THRESHOLD") or
+            grounding_threshold
         )
         self.client = genai.Client(
             api_key=api_key or
@@ -564,10 +570,14 @@ class GeminiProvider(ApiProviderAbc):
                 "HARM_CATEGORY_SEXUALLY_EXPLICIT"
             ]
         ]]
-        tools = filter(None, [
-            genai_types.Tool(google_search=genai_types.GoogleSearch())
-            if web_search else None
-        ])
+        google_search_tool=genai_types.Tool(
+            google_search=genai_types.GoogleSearchRetrieval(
+                dynamic_retrieval_config=genai_types.DynamicRetrievalConfig(
+                    dynamic_threshold=self.grounding_threshold
+                )
+            )
+        )
+        tools = [google_search_tool] if web_search else []
         return self.client.models.generate_content_stream(
             model=model,
             contents=contents,

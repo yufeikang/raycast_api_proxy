@@ -20,6 +20,7 @@ models:
       skip_models_patterns:
         - "^gemini-1.0-.*$"
       harm_threshold: "BLOCK_ONLY_HIGH"
+      grounding_threshold: 0.3
 
   - provider_name: "DeepSeek"
     api_type: "openai"
