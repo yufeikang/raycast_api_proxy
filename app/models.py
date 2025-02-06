@@ -121,6 +121,10 @@ def _get_model_extra_info(name=""):
                 "supported": True,
             },
         }
+        if "gemini-2" in name:
+            ext["abilities"]["web_search"] = {
+                "toggleable": True
+            }
     return ext
 
 
@@ -485,6 +489,10 @@ class GeminiProvider(ApiProviderAbc):
             raycast_data.get("temperature") or
             self.temperature
         )
+        web_search = any(
+            tool['name'] == 'web_search' and tool['type'] == 'remote_tool'
+            for tool in raycast_data.get('tools', [])
+        )
         google_message = []
         for msg in raycast_data["messages"]:
             content = {"role": "user"}
@@ -505,7 +513,7 @@ class GeminiProvider(ApiProviderAbc):
 
         logger.debug(f"text: {google_message}")
         result = self.__generate_content(
-            model_name, google_message, temperature, system_instruction
+            model_name, google_message, temperature, system_instruction, web_search
         )
         for chunk in result:
             if chunk.prompt_feedback:
@@ -542,6 +550,7 @@ class GeminiProvider(ApiProviderAbc):
         contents,
         temperature,
         system_instruction = None,
+        web_search = False
     ):
         safety_settings = [genai_types.SafetySetting(**d) for d in [
             {
@@ -555,6 +564,10 @@ class GeminiProvider(ApiProviderAbc):
                 "HARM_CATEGORY_SEXUALLY_EXPLICIT"
             ]
         ]]
+        tools = filter(None, [
+            genai_types.Tool(google_search=genai_types.GoogleSearch())
+            if web_search else None
+        ])
         return self.client.models.generate_content_stream(
             model=model,
             contents=contents,
@@ -562,7 +575,8 @@ class GeminiProvider(ApiProviderAbc):
                 candidate_count=1,
                 system_instruction=system_instruction,
                 temperature=temperature,
-                safety_settings=safety_settings
+                safety_settings=safety_settings or None,
+                tools=tools or None,
             ),
         )
 
