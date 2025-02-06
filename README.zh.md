@@ -113,7 +113,7 @@ pdm run cert_gen
 sudo security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain ~/.mitmproxy/mitmproxy-ca-cert.pem
 ```
 
-#### 3. 修改 `/etc/host` 以添加以下行
+#### 3. 修改 `/etc/hosts` 以添加以下行
 
 ```
 127.0.0.1 backend.raycast.com

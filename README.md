@@ -123,7 +123,7 @@ the terminal as an alternative:
 sudo security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain ~/.mitmproxy/mitmproxy-ca-cert.pem
 ```
 
-#### 3. Modify `/etc/host` to add the following lines
+#### 3. Modify `/etc/hosts` to add the following lines
 
 ```
 127.0.0.1 backend.raycast.com
