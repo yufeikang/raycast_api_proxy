@@ -171,3 +171,5 @@ custom*.yml
 !.vscode/launch.json
 !.vscode/settings.json
 config.yml
+
+data/

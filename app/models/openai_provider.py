@@ -8,6 +8,7 @@ from typing import List
 import openai
 
 from app.utils import json_dumps
+
 from .base import ApiProviderAbc, _get_default_model_dict, _get_model_extra_info
 
 logger = logging.getLogger(__name__)
@@ -68,10 +69,16 @@ class OpenAIProvider(ApiProviderAbc):
                 api_key=api_key, base_url=base_url, **kwargs
             )
 
-    def __build_openai_messages(self, raycast_data: dict):
+    def __build_openai_messages(self, messages, additional_system_instructions=None):
         openai_messages = []
         temperature = self.temperature
-        for msg in raycast_data["messages"]:
+        if additional_system_instructions:
+            openai_messages.append(
+                {"role": "system", "content": additional_system_instructions}
+            )
+        for msg in messages:
+
+            # may by deprecated
             if "system_instructions" in msg["content"]:
                 openai_messages.append(
                     {
@@ -86,26 +93,110 @@ class OpenAIProvider(ApiProviderAbc):
                         "content": msg["content"]["command_instructions"],
                     }
                 )
-            if "additional_system_instructions" in raycast_data:
+            # First handle tool calls if present
+            tool_call_message = None
+            if "tool_calls" in msg:
+                tool_call = msg["tool_calls"][0]  # Get first tool call
+                function_args = tool_call["function"]["arguments"]
+                if isinstance(function_args, dict):
+                    function_args = json.dumps(function_args)
+
+                tool_call_id = tool_call.get("id", "")
+                logger.debug(f"Processing function call: {tool_call_id}")
+
+                # Create assistant's function call message
+                tool_call_message = {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": tool_call_id,
+                            "type": "function",
+                            "function": {
+                                "name": tool_call["function"]["name"],
+                                "arguments": function_args,
+                            },
+                        }
+                    ],
+                }
+
+            # Then handle any text content
+            if "text" in msg["content"]:
+                if msg["author"] == "assistant":
+                    # If this is an assistant message with tool calls,
+                    # update the tool call message with the text content
+                    if tool_call_message:
+                        tool_call_message["content"] = msg["content"]["text"]
+                    else:
+                        # Regular assistant message without tool calls
+                        openai_messages.append(
+                            {"role": "assistant", "content": msg["content"]["text"]}
+                        )
+                elif msg["author"] != "tool":
+                    # tool responses are handled separately
+                    # Handle other roles (user, system)
+                    openai_messages.append(
+                        {"role": msg["author"], "content": msg["content"]["text"]}
+                    )
+
+            # Add the tool call message if we created one
+            if tool_call_message:
+                openai_messages.append(tool_call_message)
+
+            # Handle tool responses
+            if msg["author"] == "tool":
+                tool_call_id = msg["tool_call_id"]
+                function_name = msg["name"]
+                logger.debug(
+                    f"Processing tool response for: {tool_call_id}, function: {function_name}"
+                )
+
+                # Find the last assistant message with matching tool_calls
+                last_assistant_msg = None
+                for prev_msg in openai_messages[::-1]:
+                    if (
+                        prev_msg.get("role") == "assistant"
+                        and "tool_calls" in prev_msg
+                        and any(
+                            call["id"] == tool_call_id
+                            for call in prev_msg["tool_calls"]
+                        )
+                    ):
+                        last_assistant_msg = prev_msg
+                        break
+
+                if not last_assistant_msg:
+                    logger.warning(
+                        f"Skipping tool response - no matching assistant message with tool calls found: {tool_call_id}"
+                    )
+                    continue
+
                 openai_messages.append(
                     {
-                        "role": "system",
-                        "content": raycast_data["additional_system_instructions"],
+                        "role": "tool",
+                        "tool_call_id": tool_call_id,
+                        "name": function_name,
+                        "content": msg["content"]["text"],
                     }
                 )
-            if "text" in msg["content"]:
-                openai_messages.append(
-                    {"role": msg["author"], "content": msg["content"]["text"]}
-                )
+                logger.debug(f"Added tool response matching call: {tool_call_id}")
+
             if "temperature" in msg["content"]:
                 temperature = msg["content"]["temperature"]
+
         return openai_messages, temperature
 
     async def chat_completions(self, raycast_data: dict):
-        openai_messages, temperature = self.__build_openai_messages(raycast_data)
+        openai_messages, temperature = self.__build_openai_messages(
+            raycast_data["messages"]
+        )
         model = raycast_data["model"]
         tools = []
-        if (
+        if "tools" in raycast_data:
+            for tool in raycast_data["tools"]:
+                if tool["type"] == "local_tool" and "function" in tool:
+                    tools.append({"type": "function", "function": tool["function"]})
+        elif (
             "image_generation_tool" in raycast_data
             and raycast_data["image_generation_tool"]
         ):
@@ -129,8 +220,14 @@ class OpenAIProvider(ApiProviderAbc):
                 yield f'data: {json_dumps({"text": choice.delta.content})}\n\n'
             if choice.delta.tool_calls:
                 logger.debug(f"Tool calls: {choice.delta}")
+                # Stream individual tool call updates
                 for tool_call in choice.delta.tool_calls:
-                    logger.debug(f"Tool call: {tool_call}")
+                    tool_call_data = {
+                        "text": "",
+                        "finish_reason": None,
+                        "tool_calls": [{"index": 0}],
+                    }
+
                     if tool_call.id and tool_call.type == "function":
                         current_function_id = tool_call.id
                         if current_function_id not in functions:
@@ -139,39 +236,69 @@ class OpenAIProvider(ApiProviderAbc):
                                 "name": tool_call.function.name,
                                 "args": "",
                             }
-                    # add arguments stream string to the current function
-                    functions[current_function_id][
-                        "args"
-                    ] += tool_call.function.arguments
-                    continue
+                            # Add function info to tool call data
+                            tool_call_data["tool_calls"][0].update(
+                                {
+                                    "id": current_function_id,
+                                    "type": "function",
+                                    "function": {
+                                        "name": tool_call.function.name,
+                                        "arguments": "",
+                                    },
+                                }
+                            )
+
+                    if tool_call.function.arguments:
+                        # Add arguments to both tracking dict and current response
+                        functions[current_function_id][
+                            "args"
+                        ] += tool_call.function.arguments
+                        tool_call_data["tool_calls"][0]["function"] = {
+                            "arguments": tool_call.function.arguments
+                        }
+
+                    yield f"data: {json_dumps(tool_call_data)}\n\n"
+                continue
+
             if choice.finish_reason is not None:
                 logger.debug(f"Finish reason: {choice.finish_reason}")
                 if choice.finish_reason == "tool_calls":
+                    # Send final tool calls event with complete arguments
+                    complete_tool_calls = []
+                    for tool_call_id, tool in functions.items():
+                        complete_tool_calls.append(
+                            {
+                                "name": tool["name"],
+                                "arguments": tool["args"],
+                                "id": tool_call_id,
+                            }
+                        )
+                    yield f'data: {json_dumps({"finish_reason":"tool_calls", "text":"", "tool_calls":complete_tool_calls})}\n\n'
                     continue
                 yield f'data: {json_dumps({"text": "", "finish_reason": choice.finish_reason})}\n\n'
-        if functions:
-            logger.debug(f"Tool functions: {functions}")
+        # Only continue conversation for image generation
+        if functions and any(
+            tool["name"] == "generate_image" for tool in functions.values()
+        ):
+            logger.debug("Processing image generation function")
             for tool_call_id, tool in functions.items():
-                delta, name, args = tool["delta"], tool["name"], tool["args"]
-                logger.debug(f"Tool call: {name} with args: {args}")
-                args = json.loads(args)
-                messages.append(delta)  # add the tool call to messages
-                tool_res = None
-                if name == "generate_image":
-                    yield f'data: {json_dumps({"text": "Generating image..."})}\n\n'
+                if tool["name"] == "generate_image":
+                    args = json.loads(tool["args"])
                     tool_res = await self.__generate_image(**args)
-                else:
-                    logger.error(f"Unknown tool function: {name}")
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": tool_call_id,
-                        "name": tool["name"],
-                        "content": tool_res,
-                    }
-                )
-                async for i in self.__warp_chat(messages, model, temperature, **kwargs):
-                    yield i
+                    new_messages = messages + [
+                        tool["delta"],  # add the tool call
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call_id,
+                            "name": tool["name"],
+                            "content": tool_res,
+                        },
+                    ]
+                    # Continue conversation with new messages
+                    async for i in self.__warp_chat(
+                        new_messages, model, temperature, **kwargs
+                    ):
+                        yield i
 
     def __build_openai_function_img_tool(self, raycast_data: dict):
         return {
@@ -227,18 +354,63 @@ class OpenAIProvider(ApiProviderAbc):
 
     def __merge_messages(self, messages):
         """
-        merge same role messages to one message
+        merge same role messages to one message, preserving function call sequences
         """
         merged_messages = []
+        tool_sequences = []  # Store tool call/response pairs in order
+        current_normal_messages = []  # Store non-tool messages
+
         for msg in messages:
-            if not merged_messages:
-                merged_messages.append(msg)
+            # Handle function calls
+            if "tool_calls" in msg:
+                # Flush any pending normal messages
+                merged_messages.extend(current_normal_messages)
+                current_normal_messages = []
+
+                # Start a new tool sequence
+                tool_sequences.append({"call": msg, "response": None})
                 continue
-            last_msg = merged_messages[-1]
+
+            # Handle tool responses
+            if msg.get("role") == "tool" and msg.get("tool_call_id"):
+                # Find the matching call and add the response
+                for seq in tool_sequences:
+                    if (
+                        seq["call"]["tool_calls"][0]["id"] == msg["tool_call_id"]
+                        and seq["response"] is None
+                    ):
+                        seq["response"] = msg
+                        break
+                continue
+
+            # Handle normal messages for merging
+            if not current_normal_messages:
+                current_normal_messages.append(msg)
+                continue
+
+            last_msg = current_normal_messages[-1]
             if last_msg.get("role") == msg.get("role"):
-                last_msg["content"] += "\n" + msg.get("content")
+                if (
+                    last_msg.get("content") is not None
+                    and msg.get("content") is not None
+                ):
+                    last_msg["content"] += "\n" + msg.get("content")
+                elif msg.get("content") is not None:
+                    last_msg["content"] = msg.get("content")
             else:
-                merged_messages.append(msg)
+                current_normal_messages.append(msg)
+
+        # Add any remaining normal messages
+        merged_messages.extend(current_normal_messages)
+
+        # Add tool sequences in order, ensuring each call is followed by its response
+        for seq in tool_sequences:
+            if seq["call"]:
+                merged_messages.append(seq["call"])
+            if seq["response"]:
+                merged_messages.append(seq["response"])
+
+        logger.debug(f"Final messages: {[msg.get('role') for msg in merged_messages]}")
         return merged_messages
 
     async def __chat(self, messages, model, temperature, **kwargs):
