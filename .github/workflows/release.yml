@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Needed for creating releases and pushing changes
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv pip install -e ".[dev]"  # Install dev dependencies for building
+
+      - name: Run tests
+        run: |
+          uv run pytest tests/test_endpoints.py -v
+
+      - name: Build package
+        id: build
+        run: |
+          python -m build --wheel
+          echo "WHL_FILE=$(ls dist/*.whl)" >> $GITHUB_OUTPUT
+          
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update download URLs
+        run: |
+          WHL_NAME=$(basename ${{ steps.build.outputs.WHL_FILE }})
+          RAW_URL="https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/${WHL_NAME}"
+          
+          # Update CHANGELOG.md
+          sed -i "/^## \[${{ steps.get_version.outputs.VERSION }}\]/a\\\\nInstall from GitHub Release:\\n\`\`\`bash\\nuv pip install ${RAW_URL}\\n\`\`\`\\n" CHANGELOG.md
+          
+          # Update README.md - add installation section if it doesn't exist
+          if ! grep -q "## Installation" README.md; then
+            echo -e "\n## Installation\n" >> README.md
+          fi
+          
+          # Update or add installation instructions in README.md
+          if grep -q "uv pip install.*releases/download" README.md; then
+            sed -i "s|uv pip install https://github.com/.*/releases/download/.*|uv pip install ${RAW_URL}|" README.md
+          else
+            sed -i "/## Installation/a\\\\nInstall from GitHub Release:\\n\`\`\`bash\\nuv pip install ${RAW_URL}\\n\`\`\`\\n" README.md
+          fi
+          
+      - name: Commit updates
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add CHANGELOG.md README.md
+          git commit -m "docs: update installation URLs for v${{ steps.get_version.outputs.VERSION }}"
+          git push origin HEAD:${GITHUB_REF_NAME}
+        
+      - name: Extract release notes
+        id: release_notes
+        run: |
+          # Extract the latest version's release notes from CHANGELOG.md
+          awk '/^## \[[0-9]+\.[0-9]+\.[0-9]+\]/ {if(p){exit}; p=1; next} p' CHANGELOG.md > release_notes.txt
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*.whl
+          body_path: release_notes.txt
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
