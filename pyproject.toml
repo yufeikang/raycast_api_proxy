@@ -20,8 +20,11 @@ readme = "README.md"
 license = {text = "MIT"}
 
 [build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
 
 [tool.black]
 line-length = 88
@@ -33,7 +36,7 @@ profile = "black"
 line_length = 88
 skip_gitignore = true
 
-[tool.pdm.dev-dependencies]
+[project.optional-dependencies]
 dev = [
     "black>=24.1.1",
     "cryptography>=42.0.7",
@@ -46,7 +49,3 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
-
-[tool.pdm.scripts]
-# generate cert by ./scripts/cert_gen.py
-cert_gen = "scripts/cert_gen.py  --domain backend.raycast.com --out ./cert"
