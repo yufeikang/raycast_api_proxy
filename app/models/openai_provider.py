@@ -48,7 +48,7 @@ class OpenAIProvider(ApiProviderAbc):
         self.allow_model_patterns = allow_model_patterns
         if not allow_model_patterns and provider == "openai":
             self.allow_model_patterns = ["gpt-\\d+", "o1"]
-            logger.debug(f"Model filter: {self.allow_model_patterns}")
+            logger.debug("Model filter: %s", self.allow_model_patterns)
         self.skip_models_patterns = skip_models_patterns
         if not skip_models_patterns and provider == "openai":
             self.skip_models_patterns = [
@@ -57,14 +57,14 @@ class OpenAIProvider(ApiProviderAbc):
                 ".+audio.\\+",
                 ".+\\d{4}-\\d{2}-\\d{2}$",
             ]
-            logger.debug(f"Skip model filter: {self.skip_models_patterns}")
+            logger.debug("Skip model filter: %s", self.skip_models_patterns)
         if kwargs and "is_azure" in kwargs:
             logger.info("Init Azure API")
             del kwargs["is_azure"]
             self.openai_client = openai.AsyncAzureOpenAI(**kwargs)
         else:
-            logger.info(f"Init OpenAI API via {self.provider}")
-            logger.info(f"OpenAI API base url: {openai.base_url}")
+            logger.info("Init OpenAI API via %s", self.provider)
+            logger.info("OpenAI API base url: %s", openai.base_url)
             self.openai_client = openai.AsyncOpenAI(
                 api_key=api_key, base_url=base_url, **kwargs
             )
@@ -102,7 +102,7 @@ class OpenAIProvider(ApiProviderAbc):
                     function_args = json.dumps(function_args)
 
                 tool_call_id = tool_call.get("id", "")
-                logger.debug(f"Processing function call: {tool_call_id}")
+                logger.debug("Processing function call: %s", tool_call_id)
 
                 # Create assistant's function call message
                 tool_call_message = {
@@ -148,7 +148,9 @@ class OpenAIProvider(ApiProviderAbc):
                 tool_call_id = msg["tool_call_id"]
                 function_name = msg["name"]
                 logger.debug(
-                    f"Processing tool response for: {tool_call_id}, function: {function_name}"
+                    "Processing tool response for: %s, function: %s",
+                    tool_call_id,
+                    function_name,
                 )
 
                 # Find the last assistant message with matching tool_calls
@@ -167,7 +169,8 @@ class OpenAIProvider(ApiProviderAbc):
 
                 if not last_assistant_msg:
                     logger.warning(
-                        f"Skipping tool response - no matching assistant message with tool calls found: {tool_call_id}"
+                        "Skipping tool response - no matching assistant message with tool calls found: %s",
+                        tool_call_id,
                     )
                     continue
 
@@ -179,7 +182,7 @@ class OpenAIProvider(ApiProviderAbc):
                         "content": msg["content"]["text"],
                     }
                 )
-                logger.debug(f"Added tool response matching call: {tool_call_id}")
+                logger.debug("Added tool response matching call: %s", tool_call_id)
 
             if "temperature" in msg["content"]:
                 temperature = msg["content"]["temperature"]
@@ -188,7 +191,7 @@ class OpenAIProvider(ApiProviderAbc):
 
     async def chat_completions(self, raycast_data: dict):
         openai_messages, temperature = self.__build_openai_messages(
-            raycast_data["messages"]
+            raycast_data["messages"], raycast_data.get("additional_system_instructions")
         )
         model = raycast_data["model"]
         tools = []
@@ -219,7 +222,7 @@ class OpenAIProvider(ApiProviderAbc):
             if choice.delta and choice.delta.content:
                 yield f'data: {json_dumps({"text": choice.delta.content})}\n\n'
             if choice.delta.tool_calls:
-                logger.debug(f"Tool calls: {choice.delta}")
+                logger.debug("Tool calls: %s", choice.delta)
                 # Stream individual tool call updates
                 for tool_call in choice.delta.tool_calls:
                     tool_call_data = {
@@ -261,7 +264,7 @@ class OpenAIProvider(ApiProviderAbc):
                 continue
 
             if choice.finish_reason is not None:
-                logger.debug(f"Finish reason: {choice.finish_reason}")
+                logger.debug("Finish reason: %s", choice.finish_reason)
                 if choice.finish_reason == "tool_calls":
                     # Send final tool calls event with complete arguments
                     complete_tool_calls = []
@@ -328,7 +331,7 @@ class OpenAIProvider(ApiProviderAbc):
             )
             return json.dumps({"url": res.data[0].url})
         except openai.OpenAIError as e:
-            logger.error(f"OpenAI error: {e}")
+            logger.error("OpenAI error: %s", e)
             return json.dumps({"error": str(e)})
 
     async def translate_completions(self, raycast_data: dict):
@@ -341,7 +344,7 @@ class OpenAIProvider(ApiProviderAbc):
             {"role": "user", "content": raycast_data["q"]},
         ]
         model = os.environ.get("OPENAI_TRANSLATE_MODEL", "gpt-3.5-turbo")
-        logger.debug(f"Translating: {raycast_data['q']} with model: {model}")
+        logger.debug("Translating: %s with model: %s", raycast_data["q"], model)
         async for choice, error in self.__chat(messages, model=model, temperature=0.8):
             if error:
                 error_message = (
@@ -410,7 +413,7 @@ class OpenAIProvider(ApiProviderAbc):
             if seq["response"]:
                 merged_messages.append(seq["response"])
 
-        logger.debug(f"Final messages: {[msg.get('role') for msg in merged_messages]}")
+        logger.debug("Final messages: %s", [msg.get("role") for msg in merged_messages])
         return merged_messages
 
     async def __chat(self, messages, model, temperature, **kwargs):
@@ -428,7 +431,7 @@ class OpenAIProvider(ApiProviderAbc):
                 ):
                     m["role"] = "user"
             messages = self.__merge_messages(messages)
-            logger.debug(f"openai chat, messages: {messages}")
+            logger.debug("openai chat, messages: %s", messages)
             res = await self.openai_client.chat.completions.create(
                 model=model,
                 messages=messages,
@@ -437,7 +440,7 @@ class OpenAIProvider(ApiProviderAbc):
                 **kwargs,
             )
         except openai.OpenAIError as e:
-            logger.error(f"OpenAI error: {e}")
+            logger.error("OpenAI error: %s", e)
             yield None, e
             return
         if not stream:
@@ -447,7 +450,7 @@ class OpenAIProvider(ApiProviderAbc):
             return
         async for chunk in res:
             if not chunk.choices:
-                logger.error(f"OpenAI error: {chunk}")
+                logger.error("OpenAI error: %s", chunk)
                 yield None, None
                 return
             yield chunk.choices[0], None
@@ -469,14 +472,14 @@ class OpenAIProvider(ApiProviderAbc):
             if self.allow_model_patterns and all(
                 not re.match(f, model.id) for f in self.allow_model_patterns
             ):
-                logger.debug(f"Skipping model: {model.id}, not match any allow filter")
+                logger.debug("Skipping model: %s, not match any allow filter", model.id)
                 continue
             if any(re.match(f, model.id) for f in self.skip_models_patterns):
-                logger.debug(f"Skipping model: {model.id} match skip filter")
+                logger.debug("Skipping model: %s match skip filter", model.id)
                 continue
 
             model_id = f"{self.provider}-{model.id}"
-            logger.debug(f"Allowed model: {model.id}")
+            logger.debug("Allowed model: %s", model.id)
             models.append(
                 {
                     "id": model_id,
