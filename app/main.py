@@ -3,10 +3,11 @@ import json
 import logging
 import os
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 import httpx
 import websockets
-from fastapi import FastAPI, Request, Response, WebSocket
+from fastapi import FastAPI, HTTPException, Request, Response, WebSocket
 from fastapi.responses import StreamingResponse
 
 from app.middleware import AuthMiddleware
@@ -25,35 +26,35 @@ logging.getLogger(__package__).setLevel(os.environ.get("LOG_LEVEL", logging.DEBU
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
-app.add_middleware(AuthMiddleware)
-
 http_client = httpx.AsyncClient(verify=False)
 
-
-@app.on_event("shutdown")
-async def shutdown_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await init_models()
+    yield
+    # Shutdown
     await http_client.aclose()
 
-
-@app.on_event("startup")
-async def on_startup():
-    await init_models()
-
-
+app = FastAPI(lifespan=lifespan)
+app.add_middleware(AuthMiddleware)
 app.include_router(sync_router, prefix="/api/v1/me")
-
 
 @app.post("/api/v1/ai/chat_completions")
 async def chat_completions(request: Request):
     raycast_data = await request.json()
     logger.debug(f"Received chat completion request: {raycast_data}")
     model_name = raycast_data.get("model")
+    bot = get_bot(model_name)
+    if not bot:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Model not found: {model_name}",
+        )
     return StreamingResponse(
-        get_bot(model_name).chat_completions(raycast_data=raycast_data),
+        bot.chat_completions(raycast_data=raycast_data),
         media_type="text/event-stream",
     )
-
 
 @app.api_route("/api/v1/translations", methods=["POST"])
 async def proxy_translations(request: Request):
@@ -70,7 +71,6 @@ async def proxy_translations(request: Request):
     return Response(
         status_code=200, content=json_dumps(res), media_type="application/json"
     )
-
 
 @app.api_route("/api/v1/me", methods=["GET"])
 async def proxy(request: Request):
@@ -108,7 +108,6 @@ async def proxy(request: Request):
         headers=response.headers,
     )
 
-
 @app.api_route("/api/v1/ai/models", methods=["GET"])
 async def proxy_models(request: Request):
     logger.info("Received request to /api/v1/ai/models")
@@ -137,9 +136,10 @@ async def proxy_models(request: Request):
         headers=response.headers,
     )
 
-
 # pass through all other requests
-@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+@app.api_route(
+    "/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+)
 async def proxy_options(request: Request, path: str):
     logger.info(f"Received request: {request.method} {path}")
     headers = {key: value for key, value in request.headers.items()}
@@ -160,7 +160,6 @@ async def proxy_options(request: Request, path: str):
         content=response.content,
         headers=response.headers,
     )
-
 
 @app.websocket("/cable")
 async def websocket_endpoint(websocket: WebSocket):
@@ -185,7 +184,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Run tasks for forwarding messages in both directions
     await asyncio.gather(forward(websocket, target_ws), forward(target_ws, websocket))
-
 
 if __name__ == "__main__":
     import uvicorn

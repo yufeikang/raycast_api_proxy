@@ -1,4 +1,4 @@
-
+i
 [project]
 name = "raycast_backend"
 version = "0.1.0"
@@ -40,8 +40,15 @@ dev = [
     "black>=24.1.1",
     "cryptography>=42.0.7",
     "mitmproxy>=0.14.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.5",
+    "pytest-cov>=4.1.0",
 ]
 
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.pdm.scripts]
 # generate cert by ./scripts/cert_gen.py
