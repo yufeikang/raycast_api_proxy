@@ -254,7 +254,7 @@ python scripts/cert_gen.py --domain backend.raycast.com --out ./cert
 5. 启动服务：
 
 ```sh
-python ./app/main.py
+python ./raycast_proxy/main.py
 ```
 
 #### 4. 本地开发

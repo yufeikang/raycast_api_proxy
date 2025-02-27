@@ -13,5 +13,5 @@ docker run --rm -it \
     -e CERT_KEY=/data/cert/backend.raycast.com.key.pem \
     -e LOG_LEVEL=DEBUG \
     -e ALLOWED_USERS=$ALLOWED_USERS \
-    -v $PWD/app:/project/app \
+    -v $PWD/raycast_proxy:/project/raycast_proxy \
     raycast --entrypoint "sh /entrypoint.sh --reload"

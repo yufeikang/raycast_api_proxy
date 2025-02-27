@@ -9,7 +9,7 @@ services:
     dns:
       - 1.1.1.1
     volumes:
-      - "$PWD/app:/project/app"
+      - "$PWD/raycast_proxy:/project/raycast_proxy"
       - "$PWD/logs:/project/logs"
     command: --reload
     env_file:

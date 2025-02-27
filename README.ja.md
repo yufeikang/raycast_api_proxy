@@ -230,7 +230,7 @@ python scripts/cert_gen.py --domain backend.raycast.com --out ./cert
 5. サービスを起動：
 
 ```sh
-python ./app/main.py
+python ./raycast_proxy/main.py
 ```
 
 #### 4. ローカル開発

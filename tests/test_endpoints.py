@@ -6,14 +6,14 @@ import pytest_asyncio
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.main import chat_completions, init_models, proxy_models
-from app.models import DEFAULT_MODELS, MODELS_AVAILABLE, get_bot
+from raycast_proxy.main import chat_completions, init_models, proxy_models
+from raycast_proxy.models import DEFAULT_MODELS, MODELS_AVAILABLE, get_bot
 
 
 @pytest_asyncio.fixture(autouse=True)
 async def mock_init_models():
     # Mock model initialization
-    with patch("app.models.init_models"):
+    with patch("raycast_proxy.models.init_models"):
         yield
 
 
@@ -100,7 +100,7 @@ async def test_chat_completions_endpoint(mock_chat_response, mock_bot):
         "provider": "openai",
     }
 
-    with patch("app.main.get_bot", return_value=mock_bot):
+    with patch("raycast_proxy.main.get_bot", return_value=mock_bot):
 
         response = client.post("/api/v1/ai/chat_completions", json=chat_request)
 
@@ -119,7 +119,7 @@ async def test_chat_completions_error_handling():
     }
 
     # Mock get_bot to return None for invalid model
-    with patch("app.main.get_bot", return_value=None):
+    with patch("raycast_proxy.main.get_bot", return_value=None):
         response = client.post("/api/v1/ai/chat_completions", json=chat_request)
 
         # Should return 500 with detail message for invalid model

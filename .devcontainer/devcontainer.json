@@ -29,6 +29,6 @@
         "ALLOWED_USERS": "${localEnv:ALLOWED_USERS}",
         "PYTHONPATH": "/project/__pypackages__/3.9/lib"
     },
-    "workspaceMount": "source=${localWorkspaceFolder}/app,target=/project/app,type=bind",
+    "workspaceMount": "source=${localWorkspaceFolder}/raycast_proxy,target=/project/raycast_proxy,type=bind",
     "workspaceFolder": "/project"
 }

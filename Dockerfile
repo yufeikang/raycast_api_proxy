@@ -6,7 +6,7 @@ RUN pip install uv
 
 # copy files
 COPY pyproject.toml README.md /project/
-COPY app /project/app
+COPY raycast_proxy /project/raycast_proxy
 
 # install dependencies and project
 WORKDIR /project
@@ -17,13 +17,13 @@ FROM python:3.10-slim
 
 # copy installed packages and project files from build stage
 COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
-COPY --from=builder /project/app /project/app
+COPY --from=builder /project/raycast_proxy /project/raycast_proxy
 COPY scripts/entrypoint.sh /
 
 EXPOSE 80
 
 WORKDIR /project
-ENV PYTHONPATH=/project/app
+ENV PYTHONPATH=/project/raycast_proxy
 
 # set command/entrypoint, adapt to fit your needs
 ENTRYPOINT ["/entrypoint.sh"]
