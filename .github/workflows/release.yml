@@ -26,7 +26,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install -e ".[dev]"  # Install dev dependencies for building
+          uv pip install -e ".[dev]" --system  # Install dev dependencies for building
 
       - name: Run tests
         run: |
