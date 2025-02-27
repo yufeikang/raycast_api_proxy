@@ -30,7 +30,7 @@ jobs:
 
       - name: Run tests
         run: |
-          uv run pytest tests/test_endpoints.py -v
+          uv run pytest -v
 
       - name: Build package
         run: |

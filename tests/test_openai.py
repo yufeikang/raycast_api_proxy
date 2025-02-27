@@ -1,11 +1,11 @@
 import unittest
 
-from app.main import OpenAIChatBot
+from raycast_proxy.models.openai_provider import OpenAIProvider
 
 
 class TestOpenAIChatBot(unittest.IsolatedAsyncioTestCase):
     async def test_greeting(self):
-        bot = OpenAIChatBot()
+        bot = OpenAIProvider()
         raycast_data = {
             "image_generation_tool": True,
             "locale": "en-JP",

@@ -1,12 +1,31 @@
 import typing
 import unittest
+from unittest.mock import MagicMock, patch
 
-from app.main import GeminiChatBot
+from raycast_proxy.models.gemini_provider import GeminiProvider
 
 
 class TestGeminiChatBot(unittest.IsolatedAsyncioTestCase):
-    async def test_greeting(self):
-        bot = GeminiChatBot()
+    @patch("google.genai.Client")
+    async def test_greeting(self, mock_client_class):
+        # Mock the model class and generation result
+        class MockStreamResult:
+            text = "Mock response"
+            prompt_feedback = None
+
+        model_instance = MagicMock()
+        model_instance.generate_content_stream.return_value = [MockStreamResult()]
+
+        models = MagicMock()
+        models.models = model_instance
+
+        mock_client = MagicMock()
+        mock_client.models = model_instance
+        mock_client_class.return_value = mock_client
+
+        # Create bot instance with mock API key
+        bot = GeminiProvider(api_key="mock_key")
+
         raycast_data = {
             "image_generation_tool": True,
             "locale": "en-JP",
@@ -27,6 +46,13 @@ class TestGeminiChatBot(unittest.IsolatedAsyncioTestCase):
             "temperature": 0.5,
             "web_search_tool": True,
         }
-        # assert res is Generator
-        async for i in bot.chat_completions(raycast_data):
-            print(i)
+
+        # Run test
+        responses = []
+        async for response in bot.chat_completions(raycast_data):
+            responses.append(response)
+
+        # Verify the correct methods were called
+        mock_client.models.generate_content_stream.assert_called_once()
+        assert len(responses) > 0
+        assert all("data:" in response for response in responses)

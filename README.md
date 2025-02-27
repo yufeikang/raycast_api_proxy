@@ -296,16 +296,26 @@ For example, the above configuration will replace `$.trial_limits.commands_limit
 
 Currently, only response body replacements are supported.
 
-#### 6. Multi-User Shared Service
+#### 6. Multi-User Authentication
 
-If you want to allow multiple users to share this service or you deploy the service on the public internet, you need to restrict which users can access the service. You can use the
-`ALLOWED_USERS` environment variable to restrict which users can access the service.
+If you want to allow multiple users to share this service or you deploy the service on the public internet, you need to restrict which users can access the service. You can configure allowed users in two ways:
 
-```env
-ALLOWED_USERS="xx@example.com,yy@example.com"
+1. Using config.yml (Recommended):
+
+```yaml
+auth:
+  allowed_users:
+    - "user1@example.com"
+    - "user2@example.com"
 ```
 
-The email addresses are the Raycast user email addresses, separated by commas.
+2. Using environment variable (Legacy):
+
+```env
+ALLOWED_USERS="user1@example.com,user2@example.com"
+```
+
+The email addresses are the Raycast user email addresses. If both config.yml and environment variable are present, the config.yml settings will take precedence.
 
 ### Notes
 

@@ -4,8 +4,8 @@ models:
     params:
       api_key: "sk-xxxx"
       allow_model_patterns:
-        - "gpt-\\d+"  # Matches any model name that starts with "gpt-" followed by one or more digits
-        - "o1"  # Matches the model name "o1"
+        - "gpt-\\d+" # Matches any model name that starts with "gpt-" followed by one or more digits
+        - "o1" # Matches the model name "o1"
   - provider_name: "anthropic"
     api_type: "anthropic"
     params:
@@ -30,3 +30,8 @@ models:
       temperature: 0.9
 
 default_model: "gpt-4o"
+
+auth:
+  allowed_users:
+    - "user1@example.com"
+    - "user2@example.com"
