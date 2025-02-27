@@ -35,7 +35,7 @@ jobs:
       - name: Build package
         id: build
         run: |
-          python -m build --wheel
+          uv build
           echo "WHL_FILE=$(ls dist/*.whl)" >> $GITHUB_OUTPUT
           
       - name: Get version from tag
