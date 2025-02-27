@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Custom certificate/key file paths
   - Host and port configuration
   - Logging level control
-- Optional CLI dependencies install: `pip install raycast_backend[cli]` for CLI features
+- Optional CLI dependencies install: Install from GitHub Release assets with `uv pip install <release-wheel-url>[cli]`
 
 ### Changed
 

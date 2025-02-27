@@ -33,43 +33,9 @@ jobs:
           uv run pytest tests/test_endpoints.py -v
 
       - name: Build package
-        id: build
         run: |
           uv build
-          echo "WHL_FILE=$(ls dist/*.whl)" >> $GITHUB_OUTPUT
           
-      - name: Get version from tag
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Update download URLs
-        run: |
-          WHL_NAME=$(basename ${{ steps.build.outputs.WHL_FILE }})
-          RAW_URL="https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/${WHL_NAME}"
-          
-          # Update CHANGELOG.md
-          sed -i "/^## \[${{ steps.get_version.outputs.VERSION }}\]/a\\\\nInstall from GitHub Release:\\n\`\`\`bash\\nuv pip install ${RAW_URL}\\n\`\`\`\\n" CHANGELOG.md
-          
-          # Update README.md - add installation section if it doesn't exist
-          if ! grep -q "## Installation" README.md; then
-            echo -e "\n## Installation\n" >> README.md
-          fi
-          
-          # Update or add installation instructions in README.md
-          if grep -q "uv pip install.*releases/download" README.md; then
-            sed -i "s|uv pip install https://github.com/.*/releases/download/.*|uv pip install ${RAW_URL}|" README.md
-          else
-            sed -i "/## Installation/a\\\\nInstall from GitHub Release:\\n\`\`\`bash\\nuv pip install ${RAW_URL}\\n\`\`\`\\n" README.md
-          fi
-          
-      - name: Commit updates
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add CHANGELOG.md README.md
-          git commit -m "docs: update installation URLs for v${{ steps.get_version.outputs.VERSION }}"
-          git push origin HEAD:${GITHUB_REF_NAME}
-        
       - name: Extract release notes
         id: release_notes
         run: |
