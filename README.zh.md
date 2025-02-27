@@ -71,6 +71,36 @@ models:
 
 有关更多详细信息，请参考`config.yml.example`文件。
 
+### CLI 命令行使用
+
+当直接运行程序包（不通过 Docker）时，可以使用以下 CLI 选项：
+
+```sh
+raycast_proxy run [OPTIONS]
+
+Options:
+  --host TEXT      绑定的主机地址 (默认: 0.0.0.0)
+  --port INTEGER   绑定的端口 (SSL 启用时默认为 443，未启用时为 80)
+  --ssl/--no-ssl  启用 SSL (默认: False)
+  --cert-file TEXT SSL 证书文件路径 (如未提供则自动生成)
+  --key-file TEXT  SSL 密钥文件路径 (如未提供则自动生成)
+  --domain TEXT    SSL 证书的域名 (默认: backend.raycast.com)
+  --log-level TEXT 日志级别 (默认: INFO)
+```
+
+使用示例：
+
+```sh
+# 使用 SSL 和自定义端口运行
+raycast_proxy run --ssl --port 8443 --cert-file ./cert/cert.pem --key-file ./cert/key.pem
+
+# 不使用 SSL，在 8080 端口运行
+raycast_proxy run --no-ssl --port 8080
+
+# 使用自定义域名和日志级别运行
+raycast_proxy run --ssl --domain custom.domain.com --log-level DEBUG
+```
+
 ### Ai chat
 
 ![ai chat](./assert/img/chat.jpeg)

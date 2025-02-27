@@ -79,6 +79,36 @@ you can combine multiple models, Common options include:
 
 Refer to the `config.yml.example` file for more details.
 
+### CLI Usage
+
+When running the package directly (not through Docker), the following CLI options are available:
+
+```sh
+raycast_proxy run [OPTIONS]
+
+Options:
+  --host TEXT      Host to bind to (default: 0.0.0.0)
+  --port INTEGER   Port to bind to (default: 443 if SSL enabled, 80 if not)
+  --ssl/--no-ssl  Enable SSL (default: False)
+  --cert-file TEXT Path to SSL certificate file (auto-generated if not provided)
+  --key-file TEXT  Path to SSL key file (auto-generated if not provided)
+  --domain TEXT    Domain for SSL certificate (default: backend.raycast.com)
+  --log-level TEXT Logging level (default: INFO)
+```
+
+Example usage:
+
+```sh
+# Run with SSL enabled and custom port
+raycast_proxy run --ssl --port 443 --cert-file ./cert/cert.pem --key-file ./cert/key.pem
+
+# Run without SSL 
+raycast_proxy run --no-ssl --port 8080
+
+# log level
+raycast_proxy run --ssl --log-level DEBUG
+```
+
 ### Ai chat
 
 ![ai chat](./assert/img/chat.jpeg)

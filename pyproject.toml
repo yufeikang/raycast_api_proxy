@@ -14,6 +14,7 @@ dependencies = [
     "jsonpath-ng>=1.6.1",
     "anthropic>=0.29.0",
     "click>=8.1.7",
+    "uvicorn[standard]>=0.30.1",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
@@ -41,7 +42,6 @@ skip_gitignore = true
 
 [project.optional-dependencies]
 cli = [
-    "uvicorn[standard]>=0.30.1",
     "cryptography>=42.0.7",
     "mitmproxy>=11.0.2",
 ]

@@ -48,9 +48,39 @@ epts-howmitmproxyworks/)をご参照ください。
 
 モデルは `http://localhost:11434/v1/models` から取得されます。
 
+### CLI の使用方法
+
+パッケージを直接実行する場合（Dockerを使用しない場合）、以下のCLIオプションが利用可能です：
+
+```sh
+raycast_proxy run [OPTIONS]
+
+Options:
+  --host TEXT      バインドするホストアドレス (デフォルト: 0.0.0.0)
+  --port INTEGER   バインドするポート (SSLが有効な場合は443、無効な場合は80がデフォルト)
+  --ssl/--no-ssl  SSLを有効にする (デフォルト: False)
+  --cert-file TEXT SSL証明書ファイルのパス (未指定の場合は自動生成)
+  --key-file TEXT  SSL秘密鍵ファイルのパス (未指定の場合は自動生成)
+  --domain TEXT    SSL証明書のドメイン (デフォルト: backend.raycast.com)
+  --log-level TEXT ログレベル (デフォルト: INFO)
+```
+
+使用例：
+
+```sh
+# SSLと独自のポートを使用して実行
+raycast_proxy run --ssl --port 8443 --cert-file ./cert/cert.pem --key-file ./cert/key.pem
+
+# SSLを使用せず、ポート8080で実行
+raycast_proxy run --no-ssl --port 8080
+
+# カスタムドメインとログレベルを使用して実行
+raycast_proxy run --ssl --domain custom.domain.com --log-level DEBUG
+```
+
 ### Ai チャット
 
-!(./assert/img/chat.jpeg)
+![ai chat](./assert/img/chat.jpeg)
 
 ### 翻訳
 
