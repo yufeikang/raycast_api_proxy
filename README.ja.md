@@ -25,12 +25,12 @@ epts-howmitmproxyworks/)をご参照ください。
 >
 > 複数のモデルを同時に使用することが可能で、ただし環境変数を設定する必要があります
 
-| モデルプロバイダー | モデル | テスト状況 | 環境変数 |
-| --- | --- | --- | --- |
-| `openai` | from API | テスト済み | `OPENAI_API_KEY` |
-| `azure openai` | 同上 | テスト済み | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` |
-| `google` | gemini-pro,gemini-1.5-pro | テスト済み | `GOOGLE_API_KEY` |
-| `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | テスト済み | `ANTHROPIC_API_KEY` | x |
+| モデルプロバイダー | モデル | テスト状況 | 画像生成 | Web検索 | AI拡張機能 |
+| --- | --- | --- | --- | --- | --- |
+| `openai` | **from api** | テスト済み | サポート | 未サポート | サポート |
+| `azure openai` | 同上 | テスト済み | サポート | 未サポート | 未サポート |
+| `google` | **from api** | テスト済み | 未サポート | **from api** | 未サポート |
+| `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | テスト済み | 未サポート | 未サポート | 未サポート |
 
 #### サポートされている OpenAI API 互換プロバイダー
 
@@ -68,7 +68,11 @@ python -c "$(curl -fsSL https://raw.githubusercontent.com/yufeikang/raycast_api_
 このリポジトリをクローンし、以下のコマンドを実行
 
 ```sh
-pdm run cert_gen
+pip install uv
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+python scripts/cert_gen.py --domain backend.raycast.com --out ./cert
 ```
 
 #### 2. 証明書をシステムキーチェーンに信頼として追加
@@ -168,15 +172,32 @@ docker run --name raycast \
 #### 3. ローカルで手動起動
 
 1. このリポジトリをクローンします
-2. `pdm install` を使用して依存関係をインストール
-3. 環境変数を作成
+2. 依存関係をインストール：
 
+```sh
+pip install uv
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
 ```
+
+3. 環境変数を作成：
+
+```sh
 export OPENAI_API_KEY=<your openai api key>
 ```
 
-4. `./scripts/cert_gen.py --domain backend.raycast.com --out ./cert` を使用して自署証明書を生成
-5. `python ./app/main.py` でサービスを起動
+4. 自署証明書を生成：
+
+```sh
+python scripts/cert_gen.py --domain backend.raycast.com --out ./cert
+```
+
+5. サービスを起動：
+
+```sh
+python ./app/main.py
+```
 
 #### 4. ローカル開発
 

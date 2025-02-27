@@ -22,12 +22,12 @@
 >
 > 多个模型可以同时使用，只需设置相应的环境变量即可
 
-| 模型provider | 模型 | 测试状态 | 环境变量 | 图片生成 |
-| --- | --- | --- | --- | --- |
-| `openai` | **from api** | 已测试 | `OPENAI_API_KEY` | 已支持 |
-| `azure openai` | 同上 | 已测试 | `AZURE_OPENAI_API_KEY`, `AZURE_DEPLOYMENT_ID`, `OPENAI_AZURE_ENDPOINT` | 已支持 |
-| `google` | gemini-pro,gemini-1.5-pro | 已测试 | `GOOGLE_API_KEY` | x |
-| `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | 已测试 | `ANTHROPIC_API_KEY` | x |
+| 模型provider | 模型 | 测试状态 | 图片生成 | Web搜索 | AI扩展 |
+| --- | --- | --- | --- | --- | --- |
+| `openai` | **from api** | 已测试 | 已支持 | 不支持 | 已支持 |
+| `azure openai` | 同上 | 已测试 | 已支持 | 不支持 | 不支持 |
+| `google` | **from api** | 已测试 | 不支持 | **from api** | 不支持 |
+| `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | 已测试 | 不支持 | 不支持 | 不支持 |
 
 #### 支持openai api兼容的provider
 
@@ -95,7 +95,11 @@ python -c "$(curl -fsSL https://raw.githubusercontent.com/yufeikang/raycast_api_
 clone 本仓库，然后运行
 
 ```sh
-pdm run cert_gen
+pip install uv
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+python scripts/cert_gen.py --domain backend.raycast.com --out ./cert
 ```
 
 #### 2. 将证书信任添加到系统钥匙链
@@ -192,15 +196,32 @@ docker run --name raycast \
 #### 3. 本地手动运行
 
 1. clone 本仓库
-2. 使用 `pdm install` 安装依赖项
-3. 创建环境变量
+2. 安装依赖项:
 
+```sh
+pip install uv
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
 ```
+
+3. 创建环境变量：
+
+```sh
 export OPENAI_API_KEY=<your openai api key>
 ```
 
-4. 使用 `./scripts/cert_gen.py --domain backend.raycast.com  --out ./cert` 生成自签名证书
-5. 用`python ./app/main.py`启动服务
+4. 生成自签名证书：
+
+```sh
+python scripts/cert_gen.py --domain backend.raycast.com --out ./cert
+```
+
+5. 启动服务：
+
+```sh
+python ./app/main.py
+```
 
 #### 4. 本地开发
 

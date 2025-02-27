@@ -64,15 +64,14 @@ Each provider entry specifies the provider name, API type, and parameters.
 Supported providers:
 you can combine multiple models, Common options include:
 
-| Provider | Model | Test Status | Image Generation | Web Search |
-| --- | --- | --- | --- | --- |
-| `openai` | **from api** | Tested | Supported | Not supported |
+| Provider | Model | Test Status | Image Generation | Web Search | AI Extension |
+| --- | --- | --- | --- | --- | --- |
+| `openai` | **from api** | Tested | Supported | Not supported | Supported |
 | `azure openai` | Same as above | Tested | Supported | Same as above |
 | `google` | **from api** | Tested | Not supported | **from api** |
 | `anthropic` | claude-3-sonnet, claude-3-opus, claude-3-5-opus | Tested | Not supported | Not supported |
 | `deepseek` | **from api** | Tested | Not supported | Not supported |
 | `ollama` | **from api** | Tested | Not Supported | Not supported |
-
 
 Refer to the `config.yml.example` file for more details.
 
@@ -104,7 +103,11 @@ Or
 Clone this repository and run:
 
 ```sh
-pdm run cert_gen
+pip install uv
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+python scripts/cert_gen.py --domain backend.raycast.com --out ./cert
 ```
 
 #### 2. Add Certificate to System Keychain
@@ -203,15 +206,32 @@ docker run --name raycast \
 #### 3. Local Manual Run
 
 1. Clone this repository
-2. Install dependencies using `pdm install`
-3. Create environment variables
+2. Install dependencies:
 
+```sh
+pip install uv
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
 ```
+
+3. Create environment variables:
+
+```sh
 export OPENAI_API_KEY=<your openai api key>
 ```
 
-4. Generate self-signed certificate using `./scripts/cert_gen.py --domain backend.raycast.com  --out ./cert`
-5. Start the service using `python ./app/main.py`
+4. Generate self-signed certificate:
+
+```sh
+python scripts/cert_gen.py --domain backend.raycast.com --out ./cert
+```
+
+5. Start the service:
+
+```sh
+python ./app/main.py
+```
 
 #### 4. Local Development
 
