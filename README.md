@@ -22,6 +22,10 @@ This project uses a man-in-the-middle approach to intercept and forward Raycast 
 
 Because Raycast and its API communicate via HTTPS, you need to trust the self-signed certificate for this interception to work. More details on man-in-the-middle proxies can be found at [mitmproxy documentation](https://docs.mitmproxy.org/stable/concepts-howmitmproxyworks/).
 
+### AI Extension
+
+![ai extension](./assert/img/ai_ext.png)
+
 ### YAML-Based Model Configuration
 
 Environment variables are becoming deprecated. Now you can define multiple models in `config.yml`, allowing providers to coexist:

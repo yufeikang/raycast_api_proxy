@@ -21,6 +21,10 @@ AI](https://raycast.com/ai)を使用できる代替手段です。このプロ�
 APIの間ではHTTPSが使用されているため、自署証明書が必要であり、Raycastがその証明書を信頼する必要があります。詳細なミドルマンプロキシの原理については(<https://docs.mitmproxy.org/stable/conc>
 epts-howmitmproxyworks/)をご参照ください。
 
+### AI拡張機能
+
+![ai extension](./assert/img/ai_ext.png)
+
 ### サポートされているモデル
 >
 > 複数のモデルを同時に使用することが可能で、ただし環境変数を設定する必要があります

@@ -18,6 +18,10 @@
 
 中间人代理的简单原理是，通过修改DNS，将raycast的请求的IP指向到本项目的地址，然后本项目再将请求转发到OpenAI的API，然后再将OpenAI的响应转发到raycast。但是raycast和raycast api之间使用的https，所以本项目需要提供自签名证书，并且让raycast信任这个证书。更多关于中间人代理的原理，可以参考[mitmproxy](https://docs.mitmproxy.org/stable/concepts-howmitmproxyworks/)
 
+### AI扩展
+
+![ai extension](./assert/img/ai_ext.png)
+
 ### 支持的模型
 >
 > 多个模型可以同时使用，只需设置相应的环境变量即可
