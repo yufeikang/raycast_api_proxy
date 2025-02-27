@@ -1,28 +1,29 @@
 # build stage
 FROM python:3.10 AS builder
 
-# install PDM
-RUN pip install -U pip setuptools wheel
-RUN pip install pdm
+# install uv
+RUN pip install uv
 
 # copy files
-COPY pyproject.toml pdm.lock README.md /project/
+COPY pyproject.toml README.md /project/
+COPY app /project/app
 
-# install dependencies and project into the local packages directory
+# install dependencies and project
 WORKDIR /project
-RUN mkdir __pypackages__ && pdm install --prod --no-lock --no-editable
+RUN uv pip install -e "." --system
 
 # run stage
 FROM python:3.10-slim
 
-# retrieve packages from build stage
-ENV PYTHONPATH=/project/pkgs
-COPY --from=builder /project/__pypackages__/3.10/lib /project/pkgs
-COPY app /project/app
+# copy installed packages and project files from build stage
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /project/app /project/app
 COPY scripts/entrypoint.sh /
 
 EXPOSE 80
 
 WORKDIR /project
+ENV PYTHONPATH=/project/app
+
 # set command/entrypoint, adapt to fit your needs
-ENTRYPOINT sh /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
