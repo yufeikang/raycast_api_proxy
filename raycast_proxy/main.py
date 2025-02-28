@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 import os
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -19,12 +18,10 @@ from raycast_proxy.utils import (
     pass_through_request,
     process_custom_mapping,
 )
+import app.logging_config
+from loguru import logger
 
-FORMAT = "%(asctime)-15s %(threadName)s %(filename)-15s:%(lineno)d %(levelname)-8s: %(message)s"
-logging.basicConfig(format=FORMAT)
-logging.getLogger(__package__).setLevel(os.environ.get("LOG_LEVEL", logging.DEBUG))
-
-logger = logging.getLogger(__name__)
+logger = logger.bind(name=__name__)
 
 http_client = httpx.AsyncClient(verify=False)
 
