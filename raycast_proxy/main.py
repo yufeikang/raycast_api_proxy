@@ -18,7 +18,7 @@ from raycast_proxy.utils import (
     pass_through_request,
     process_custom_mapping,
 )
-import app.logging_config
+import raycast_proxy.logging_config
 from loguru import logger
 
 logger = logger.bind(name=__name__)
