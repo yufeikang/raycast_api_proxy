@@ -18,4 +18,6 @@ docker run --rm -it \
     -e PYTHONUNBUFFERED=1 \
     -e DEBUG_MODE=1 \
     -v $PWD/raycast_proxy:/project/raycast_proxy \
-    raycast --entrypoint "sh /entrypoint.sh --reload"
+    --entrypoint "/entrypoint.sh" \
+    raycast \
+    --reload
