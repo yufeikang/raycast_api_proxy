@@ -7,6 +7,7 @@ import google.genai as genai
 import google.genai.types as genai_types
 
 from raycast_proxy.utils import json_dumps
+
 from .base import ApiProviderAbc, _get_default_model_dict, _get_model_extra_info
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,9 @@ class GeminiProvider(ApiProviderAbc):
         return os.environ.get("GOOGLE_API_KEY")
 
     async def chat_completions(self, raycast_data: dict):
+        """
+        https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/gemini
+        """
         model_name = raycast_data["model"]
         system_instruction = "\n".join(
             filter(
@@ -84,8 +88,10 @@ class GeminiProvider(ApiProviderAbc):
                 content["role"] = role
             if "temperature" in msg["content"]:
                 temperature = msg["content"]["temperature"]
-            content["parts"] = parts
-            google_message.append(content)
+            # Skip empty parts
+            if parts and any(part.get("text", "").strip() for part in parts):
+                content["parts"] = parts
+                google_message.append(content)
 
         logger.debug(f"text: {google_message}")
         result = self.__generate_content(
